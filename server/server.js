@@ -9,7 +9,10 @@ require("./auth"); // Loads authentication logic
 const app = express();
 
 // Middleware
-app.use(cors());
+app.use(cors({
+    origin: "http://localhost:5173",
+    credentials: true
+}));
 app.use(express.json());
 app.use(session({
     secret: process.env.SESSION_SECRET,
@@ -19,10 +22,6 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
-// Test Route
-app.get("/", (req, res) => {
-    res.send("GovReach Backend is Running!");
-});
 
 // Google OAuth Routes
 app.get("/auth/google",
@@ -32,7 +31,7 @@ app.get("/auth/google",
 app.get("/auth/google/callback",
     passport.authenticate("google", { failureRedirect: "/" }),
     (req, res) => {
-        res.redirect("/dashboard"); // Redirect to frontend after login
+        res.redirect("http://localhost:5173/dashboard"); // Redirect to frontend after login
     }
 );
 
@@ -41,23 +40,22 @@ app.get("/auth/microsoft",
     passport.authenticate("microsoft", { scope: ["User.Read", "Mail.Send"] })
 );
 
+// Microsoft OAuth Callback
 app.get("/auth/microsoft/callback",
     passport.authenticate("microsoft", { failureRedirect: "/" }),
     (req, res) => {
-        res.redirect("/dashboard");
+        res.redirect("http://localhost:5173/dashboard"); // Redirect to frontend
     }
 );
 
-app.get("/dashboard", (req, res) => {
+app.get("/user", (req, res) => {
     if (!req.isAuthenticated()) {
-        return res.redirect("/");
+        return res.status(401).json({ message: "Not logged in" });
     }
-
-    res.send(`
-        <h1>Welcome to GovReach</h1>
-        <p>You are logged in as ${req.user.profile.displayName}</p>
-        <a href="/logout">Logout</a>
-    `);
+    res.json({
+        name: req.user.profile.displayName,
+        email: req.user.profile.emails[0].value
+    });
 });
 
 
