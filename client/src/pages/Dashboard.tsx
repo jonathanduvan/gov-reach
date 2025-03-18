@@ -9,7 +9,7 @@ const Dashboard = () => {
     const [user, setUser] = useState<User | null>(null);
 
     useEffect(() => {
-        fetch("http://localhost:5000/user", { credentials: "include" })
+        fetch("http://localhost:4000/user", { credentials: "include" })
             .then(res => res.json())
             .then(data => setUser(data))
             .catch(() => setUser(null));
@@ -21,7 +21,7 @@ const Dashboard = () => {
                 <div>
                     <h1>Welcome, {user.name}</h1>
                     <p>Your email: {user.email}</p>
-                    <a href="http://localhost:5000/logout">
+                    <a href="http://localhost:4000/logout">
                         <button>Logout</button>
                     </a>
                 </div>
