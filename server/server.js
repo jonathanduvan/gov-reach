@@ -1,10 +1,9 @@
-require("dotenv").config();
-const express = require("express");
-const cors = require("cors");
-const session = require("express-session");
-const passport = require("passport");
-
-require("./auth"); // Loads authentication logic
+import "dotenv/config";
+import express from "express";
+import cors from "cors";
+import session from "express-session";
+import passport from "passport";
+import "./auth.js"; // Loads authentication logic
 
 const app = express();
 
@@ -17,13 +16,17 @@ app.use(express.json());
 app.use(session({
     secret: process.env.SESSION_SECRET,
     resave: false,
-    saveUninitialized: true
+    saveUninitialized: false, // Prevents creating empty sessions
+    cookie: {
+        httpOnly: true, // Prevents XSS attacks
+        secure: false, // Set to true in production (HTTPS)
+        sameSite: "lax"
+    }
 }));
 app.use(passport.initialize());
 app.use(passport.session());
 
-
-// Google OAuth Routes
+// Updated Google OAuth Routes
 app.get("/auth/google",
     passport.authenticate("google", { scope: ["profile", "email"] })
 );
@@ -31,35 +34,43 @@ app.get("/auth/google",
 app.get("/auth/google/callback",
     passport.authenticate("google", { failureRedirect: "/" }),
     (req, res) => {
-        res.redirect("http://localhost:5173/dashboard"); // Redirect to frontend after login
-    }
-);
-
-// Microsoft OAuth Routes
-app.get("/auth/microsoft",
-    passport.authenticate("microsoft", { scope: ["User.Read", "Mail.Send"] })
-);
-
-// Microsoft OAuth Callback
-app.get("/auth/microsoft/callback",
-    passport.authenticate("microsoft", { failureRedirect: "/" }),
-    (req, res) => {
+        req.session.user = req.user; // Store user data in session
         res.redirect("http://localhost:5173/dashboard"); // Redirect to frontend
     }
 );
 
+// Updated Microsoft OAuth Routes
+app.get("/auth/microsoft",
+    passport.authenticate("microsoft", { scope: ["User.Read", "Mail.Send"] })
+);
+
+app.get("/auth/microsoft/callback",
+    passport.authenticate("microsoft", { failureRedirect: "/" }),
+    (req, res) => {
+        req.session.user = req.user;
+        res.redirect("http://localhost:5173/dashboard");
+    }
+);
+
+// Properly Fetch Authenticated User
 app.get("/user", (req, res) => {
-    if (!req.isAuthenticated()) {
+    if (!req.session.user) {
         return res.status(401).json({ message: "Not logged in" });
     }
     res.json({
-        name: req.user.profile.displayName,
-        email: req.user.profile.emails[0].value
+        name: req.session.user.name,
+        email: req.session.user.email
     });
 });
 
-
+// Logout Route (Clears Session)
+app.get("/logout", (req, res) => {
+    req.session.destroy(() => {
+        res.clearCookie("connect.sid"); // Clears session cookie
+        res.json({ message: "Logged out successfully" });
+    });
+});
 
 // Start Server
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
+app.listen(PORT, () => console.log(`✅ Server running on http://localhost:${PORT}`));
