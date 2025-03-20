@@ -1,19 +1,29 @@
 import { useEffect, useState } from "react";
+import SendEmail from "../components/SendEmail";
+import { API_BASE_URL } from "../config";
 
 interface User {
     name: string;
     email: string;
+    provider: "gmail" | "outlook";
 }
 
 const Dashboard = () => {
     const [user, setUser] = useState<User | null>(null);
 
     useEffect(() => {
-        fetch("http://localhost:4000/user", { credentials: "include" })
+        fetch(`${API_BASE_URL}/user`, { credentials: "include" })
             .then(res => res.json())
-            .then(data => setUser(data))
+            .then(data => {
+                setUser(data);
+            })
             .catch(() => setUser(null));
     }, []);
+
+    const handleLogout = async () => {
+        await fetch(`${API_BASE_URL}/logout`, { credentials: "include" });
+        window.location.href = "/";
+    };
 
     return (
         <div>
@@ -21,9 +31,12 @@ const Dashboard = () => {
                 <div>
                     <h1>Welcome, {user.name}</h1>
                     <p>Your email: {user.email}</p>
-                    <a href="http://localhost:4000/logout">
-                        <button>Logout</button>
-                    </a>
+                    <button onClick={handleLogout}>Logout</button>
+
+                    <h3>Email Provider: {user.provider.toUpperCase()}</h3>
+
+                    {/* Pass detected provider to SendEmail component */}
+                    <SendEmail provider={user.provider} />
                 </div>
             ) : (
                 <p>Loading user info...</p>
