@@ -3,13 +3,11 @@
         "target": "ES2020",
         "module": "NodeNext",
         "moduleResolution": "NodeNext",
-        "outDir": "./dist",
-        "rootDir": "./",
-        "strict": true,
         "esModuleInterop": true,
         "forceConsistentCasingInFileNames": true,
+        "allowSyntheticDefaultImports": true,
         "skipLibCheck": true,
-        "allowJs": true,
+        "strict": true,
         "noEmit": true,
         "types": [
             "node"
@@ -17,10 +15,17 @@
         "resolveJsonModule": true
     },
     "include": [
-        "./**/*.ts"
+        "../server/**/*.ts",
+        "../shared/types/**/*.ts"
     ],
+    "paths": {
+        "@shared/*": [
+            "../shared/types/*"
+        ]
+    },
     "exclude": [
         "node_modules",
-        "dist"
+        "dist",
+        "../client"
     ]
 }

@@ -18,6 +18,10 @@ export default tseslint.config(
       'react-refresh': reactRefresh,
     },
     rules: {
+      "css/unknownAtRules": [
+        "ignore",
+        { "ignoreAtRules": ["tailwind", "apply", "variants", "responsive", "screen"] }
+      ],
       ...reactHooks.configs.recommended.rules,
       'react-refresh/only-export-components': [
         'warn',

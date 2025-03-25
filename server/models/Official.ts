@@ -1,12 +1,13 @@
-import mongoose from "mongoose";
+import mongoose, { Schema, model } from "mongoose";
+import { Official } from "../../shared/types/official.js";
 
-const officialSchema = new mongoose.Schema(
+const officialSchema = new Schema<Official>(
     {
         fullName: { type: String, required: true, trim: true },
         role: { type: String, required: true, trim: true },
         email: { type: String, required: true, unique: true, lowercase: true, trim: true },
         state: { type: String, required: true, trim: true, uppercase: true },
-        category: { type: String, required: true, trim: true }, // e.g., 'Senator', 'Governor'
+        category: { type: String, required: true, trim: true },
         level: {
             type: String,
             enum: ["federal", "state", "municipal", "regional", "tribal"],
@@ -19,4 +20,6 @@ const officialSchema = new mongoose.Schema(
     { timestamps: true }
 );
 
-export default mongoose.model("Official", officialSchema);
+// Export typed model
+const OfficialModel = model<Official>("Official", officialSchema);
+export default OfficialModel;

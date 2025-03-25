@@ -1,86 +1,85 @@
 // 1. Imports
-import express from "express";
+import express, { Request, Response } from "express";
 import cors from "cors";
 import session from "express-session";
 import passport from "passport";
 import dotenv from "dotenv";
+import "./auth.js"; // Must come after dotenv
 
 import { SERVER_CONFIG } from "./config.js";
 import { connectToDatabase } from "./db.js";
 import { sendEmailGmail, sendEmailOutlook } from "./email.js";
 import officialsRouter from "./routes/officials.js";
-import emailGroupsRouter from "./routes/emailGroups.js";
+import contactGroupsRouter from "./routes/contactGroups.js";
 
-import "./auth.js";
-
-// 2. Connect to DB
+// 2. Load env and connect DB
+dotenv.config();
 await connectToDatabase();
 
 // 3. App & Middleware
 const app = express();
 app.use(cors({ origin: SERVER_CONFIG.CLIENT_URL, credentials: true }));
 app.use(express.json());
+
 app.use(session({
-    secret: process.env.SESSION_SECRET,
+    secret: SERVER_CONFIG.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
     cookie: { secure: false, sameSite: "lax" }
 }));
+
 app.use(passport.initialize());
 app.use(passport.session());
 
-// 4. Routes (Auth, Email, Data)
+// 4. Routes
 app.use("/api/officials", officialsRouter);
-app.use("/api/email-groups", emailGroupsRouter);
+app.use("/api/contact-groups", contactGroupsRouter);
 
-// OAuth Routes (Google)
+// 5. OAuth Routes
+
 app.get("/auth/google",
     passport.authenticate("google", { scope: ["profile", "email"] })
 );
 
 app.get("/auth/google/callback",
     passport.authenticate("google", { failureRedirect: "/" }),
-    (req, res) => {
-        req.session.user = req.user;
+    (req: Request, res: Response) => {
+        req.session.user = req.user as Express.User;
         res.redirect(`${SERVER_CONFIG.CLIENT_URL}/dashboard`);
     }
 );
 
-// OAuth Routes (Microsoft)
 app.get("/auth/microsoft",
     passport.authenticate("microsoft", { scope: ["User.Read", "Mail.Send"] })
 );
 
 app.get("/auth/microsoft/callback",
     passport.authenticate("microsoft", { failureRedirect: "/" }),
-    (req, res) => {
-        req.session.user = req.user;
+    (req: Request, res: Response) => {
+        req.session.user = req.user as Express.User;
         res.redirect(`${SERVER_CONFIG.CLIENT_URL}/dashboard`);
     }
 );
 
-// User Info Route
-app.get("/user", (req, res) => {
+// 6. Session: Get user
+app.get("/user", (req: Request, res: Response) => {
     if (!req.session.user) {
         return res.status(401).json({ message: "Not logged in" });
     }
-    res.json({
-        name: req.session.user.name,
-        email: req.session.user.email,
-        provider: req.session.user.provider
-    });
+
+    const { name, email, provider } = req.session.user;
+    res.json({ name, email, provider });
 });
 
-// Logout Route
-app.get("/logout", (req, res) => {
-    req.session.destroy((err) => {
+// 7. Logout
+app.get("/logout", (req: Request, res: Response) => {
+    req.session.destroy(err => {
         if (err) {
             console.error("Error destroying session:", err);
             return res.status(500).json({ message: "Logout failed" });
         }
 
         res.clearCookie("connect.sid", { path: "/" });
-
         res.setHeader("Access-Control-Allow-Origin", SERVER_CONFIG.CLIENT_URL);
         res.setHeader("Access-Control-Allow-Credentials", "true");
 
@@ -88,32 +87,32 @@ app.get("/logout", (req, res) => {
     });
 });
 
-
-app.post("/send-email/:provider", async (req, res) => {
+// 8. Send Email
+app.post("/send-email/:provider", async (req: Request, res: Response) => {
     const { provider } = req.params;
     const { to, subject, text } = req.body;
 
-    if (!req.session.user || !req.session.user.email) {
+    if (!req.session.user?.email) {
         return res.status(401).json({ message: "Not authenticated" });
     }
 
-    let response;
     try {
+        let response;
         if (provider === "gmail") {
-            const response = await sendEmailGmail(req, to, subject, text);
+            response = await sendEmailGmail(req, to, subject, text);
         } else if (provider === "outlook") {
             response = await sendEmailOutlook(to, subject, text);
         } else {
             return res.status(400).json({ message: "Invalid email provider" });
         }
+
         res.json(response);
-    } catch (error) {
+    } catch (error: any) {
         res.status(500).json({ message: "Failed to send email", error: error.message });
     }
 });
 
-
-// Start Server
+// 9. Start Server
 app.listen(SERVER_CONFIG.PORT, () =>
     console.log(`✅ Server running on http://localhost:${SERVER_CONFIG.PORT}`)
 );

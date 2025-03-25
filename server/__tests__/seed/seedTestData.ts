@@ -1,7 +1,7 @@
 import dotenv from "dotenv";
 import { connectToDatabase } from "../../db.js";
 import Official from "../../models/Official.js";
-import EmailGroup from "../../models/EmailGroup.js";
+import EmailGroup from "../../models/ContactGroup.js";
 
 dotenv.config();
 

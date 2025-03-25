@@ -1,5 +1,5 @@
 export interface Official {
-    _id?: string; // MongoDB will add this automatically
+    _id?: string;
     fullName: string;
     role: string;
     email: string;
@@ -9,4 +9,6 @@ export interface Official {
     issues: string[];
     partners: string[];
     verified: boolean;
+    createdAt?: Date;
+    updatedAt?: Date;
 }

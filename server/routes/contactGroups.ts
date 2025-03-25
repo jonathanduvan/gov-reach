@@ -1,42 +1,42 @@
 import express, { Request, Response } from "express";
-import EmailGroupModel from "../models/EmailGroup.ts";
-import { EmailGroup } from "../../shared/types/emailGroup.ts";
+import ContactGroupModel from "../models/ContactGroup.js";
+import { ContactGroup } from "../../shared/types/contactGroup.js";
 
 const router = express.Router();
 
-// GET /api/email-groups?issue=Climate&partner=Sunrise
+// GET /api/contact-groups?issue=Climate&partner=Sunrise
 router.get("/", async (req: Request, res: Response) => {
     try {
         const { issue, partner } = req.query as { issue?: string; partner?: string };
-        const query: Partial<EmailGroup> & { status: "approved" } = { status: "approved" };
+        const query: Partial<ContactGroup> & { status: "approved" } = { status: "approved" };
 
-        if (issue) query.issues = issue;
+        if (issue) query.issues = [issue];
         if (partner) query.partner = partner;
 
-        const groups = await EmailGroupModel.find(query).populate("officials");
+        const groups = await ContactGroupModel.find(query).populate("officials");
         res.json(groups);
     } catch (err) {
-        console.error("Error fetching email groups:", err);
+        console.error("Error fetching contact groups:", err);
         res.status(500).json({ message: "Server error" });
     }
 });
 
-// POST /api/email-groups - Submit a new campaign
+// POST /api/contact-groups - Submit a new campaign
 router.post("/", async (req: Request, res: Response) => {
     try {
-        const emailGroup = new EmailGroupModel(req.body);
-        await emailGroup.save();
-        res.status(201).json({ message: "Campaign submitted for review", emailGroup });
+        const contactGroup = new ContactGroupModel(req.body);
+        await contactGroup.save();
+        res.status(201).json({ message: "Campaign submitted for review", contactGroup: contactGroup });
     } catch (err: any) {
-        console.error("Error creating email group:", err);
+        console.error("Error creating contact group:", err);
         res.status(400).json({ message: "Invalid campaign", error: err.message });
     }
 });
 
-// PUT /api/email-groups/:id/approve - Approve campaign
+// PUT /api/contact-groups/:id/approve - Approve campaign
 router.put("/:id/approve", async (req: Request, res: Response) => {
     try {
-        const updated = await EmailGroupModel.findByIdAndUpdate(
+        const updated = await ContactGroupModel.findByIdAndUpdate(
             req.params.id,
             { status: "approved" },
             { new: true }

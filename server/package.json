@@ -2,12 +2,12 @@
   "name": "govreach",
   "version": "1.0.0",
   "description": "GovReach - A tool to contact government officials via email and phone.",
-  "main": "server.js",
+  "main": "server.ts",
   "type": "module",
   "scripts": {
-    "start": "node server.js",
-    "dev": "ts-node --esm server.ts",
-    "seed:test": "node __tests__/seed/seedTestData.js"
+    "dev": "tsx ./server.ts",
+    "start": "tsx ./server.ts",
+    "seed:test": "tsx ./__tests__/seed/seedTestData.ts"
   },
   "keywords": [
     "govreach",
@@ -39,6 +39,7 @@
     "@types/passport-google-oauth20": "^2.0.16",
     "@types/passport-microsoft": "^1.0.3",
     "ts-node": "^10.9.2",
+    "tsx": "^4.19.3",
     "typescript": "^5.8.2"
   }
 }
