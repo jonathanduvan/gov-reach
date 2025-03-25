@@ -21,6 +21,20 @@ router.get("/", async (req: Request, res: Response) => {
     }
 });
 
+// GET /api/contact-groups/:id - Fetch single campaign
+router.get("/:id", async (req: Request, res: Response) => {
+    try {
+        const group = await ContactGroupModel.findById(req.params.id).populate("officials");
+        if (!group) {
+            return res.status(404).json({ message: "Contact group not found" });
+        }
+        res.json(group);
+    } catch (err) {
+        console.error("Error fetching contact group by ID:", err);
+        res.status(500).json({ message: "Server error" });
+    }
+});
+
 // POST /api/contact-groups - Submit a new campaign
 router.post("/", async (req: Request, res: Response) => {
     try {
@@ -47,5 +61,26 @@ router.put("/:id/approve", async (req: Request, res: Response) => {
         res.status(400).json({ message: "Failed to approve campaign" });
     }
 });
+
+// PUT /api/contact-groups/:id - Update campaign content
+router.put("/:id", async (req: Request, res: Response) => {
+    try {
+        const updated = await ContactGroupModel.findByIdAndUpdate(
+            req.params.id,
+            req.body,
+            { new: true }
+        ).populate("officials");
+
+        if (!updated) {
+            return res.status(404).json({ message: "Campaign not found" });
+        }
+
+        res.json({ message: "Campaign updated", campaign: updated });
+    } catch (err: any) {
+        console.error("Error updating campaign:", err);
+        res.status(400).json({ message: "Failed to update campaign", error: err.message });
+    }
+});
+
 
 export default router;
