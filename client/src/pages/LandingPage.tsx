@@ -1,5 +1,6 @@
 // src/pages/LandingPage.tsx
 import { Link } from "react-router-dom";
+import { API_BASE_URL } from "../config";
 
 const LandingPage = () => {
     return (
@@ -9,18 +10,18 @@ const LandingPage = () => {
                     ⚡ Flash Activist
                 </h1>
                 <p className="text-gray-700 dark:text-gray-300 mb-8">
-                    Take action instantly. Flash Activist lets you send powerful, personalized messages to public officials — without needing to know who to contact. All from your own email.
+                    Take action instantly. Flash Activist lets you send personalized messages to public officials at any level — with guidance on the right people for you to contact. Just start with your personal email below.
                 </p>
 
                 <div className="space-y-4 mb-6">
                     <a
-                        href="https://flashactivist.us/auth/google"
+                        href={`${API_BASE_URL}/auth/google`}
                         className="block w-full bg-white text-gray-900 border border-gray-300 hover:bg-gray-100 font-semibold py-2 rounded shadow"
                     >
                         Login with Google
                     </a>
                     <a
-                        href="https://flashactivist.us/auth/microsoft"
+                        href={`${API_BASE_URL}/auth/microsoft`}
                         className="block w-full bg-blue-600 text-white hover:bg-blue-700 font-semibold py-2 rounded shadow"
                     >
                         Login with Microsoft
