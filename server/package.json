@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "ts-node --esm server.ts",
+    "seed:test": "node __tests__/seed/seedTestData.js"
   },
   "keywords": [
     "govreach",
@@ -21,10 +22,23 @@
     "express": "^4.21.2",
     "express-session": "^1.18.1",
     "googleapis": "^146.0.0",
+    "mongoose": "^8.12.1",
     "nodemailer": "^6.10.0",
     "nodemon": "^3.1.9",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
     "passport-microsoft": "^2.1.0"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.1",
+    "@types/express-session": "^1.18.1",
+    "@types/node": "^22.13.13",
+    "@types/nodemailer": "^6.4.17",
+    "@types/passport": "^1.0.17",
+    "@types/passport-google-oauth20": "^2.0.16",
+    "@types/passport-microsoft": "^1.0.3",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.2"
   }
 }

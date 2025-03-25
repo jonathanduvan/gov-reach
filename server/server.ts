@@ -1,20 +1,24 @@
+// 1. Imports
 import express from "express";
 import cors from "cors";
 import session from "express-session";
 import passport from "passport";
+import dotenv from "dotenv";
+
 import { SERVER_CONFIG } from "./config.js";
+import { connectToDatabase } from "./db.js";
 import { sendEmailGmail, sendEmailOutlook } from "./email.js";
+import officialsRouter from "./routes/officials.js";
+import emailGroupsRouter from "./routes/emailGroups.js";
 
 import "./auth.js";
 
+// 2. Connect to DB
+await connectToDatabase();
+
+// 3. App & Middleware
 const app = express();
-
-// CORS Middleware
-app.use(cors({
-    origin: SERVER_CONFIG.CLIENT_URL,
-    credentials: true
-}));
-
+app.use(cors({ origin: SERVER_CONFIG.CLIENT_URL, credentials: true }));
 app.use(express.json());
 app.use(session({
     secret: process.env.SESSION_SECRET,
@@ -22,9 +26,12 @@ app.use(session({
     saveUninitialized: false,
     cookie: { secure: false, sameSite: "lax" }
 }));
-
 app.use(passport.initialize());
 app.use(passport.session());
+
+// 4. Routes (Auth, Email, Data)
+app.use("/api/officials", officialsRouter);
+app.use("/api/email-groups", emailGroupsRouter);
 
 // OAuth Routes (Google)
 app.get("/auth/google",
