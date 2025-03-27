@@ -11,4 +11,6 @@ export interface ContactGroup {
     officials: Types.ObjectId[] | string[];
     createdAt?: Date;
     updatedAt?: Date;
+    createdBy?: string;
+    editors?: string[];
 }
