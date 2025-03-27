@@ -2,25 +2,8 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { API_BASE_URL } from "../config";
 import { generateMessageVariations } from "../utils/generateMessageVariations";
-
-interface Official {
-    _id: string;
-    fullName: string;
-    email: string;
-    role: string;
-    state: string;
-    level: string;
-}
-
-interface ContactGroup {
-    _id: string;
-    title: string;
-    description?: string;
-    partner: string;
-    issues: string[];
-    messageTemplate: string;
-    officials: Official[];
-}
+import { ContactGroup } from "../../../shared/types/contactGroup";
+import { Official } from "../../../shared/types/official";
 
 interface User {
     name: string;

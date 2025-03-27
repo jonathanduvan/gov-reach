@@ -1,8 +1,8 @@
-// src/pages/Dashboard.tsx
 import { useEffect, useState } from "react";
 import { API_BASE_URL } from "../config";
 import CampaignFilter from "../components/CampaignFilter";
 import ContactGroupList from "../components/ContactGroupList";
+import { Link } from "react-router-dom";
 
 interface User {
     name: string;
@@ -13,6 +13,7 @@ interface User {
 const Dashboard = () => {
     const [user, setUser] = useState<User | null>(null);
     const [filters, setFilters] = useState({ issue: "", partner: "" });
+    const [showOnlyMine, setShowOnlyMine] = useState(false);
 
     useEffect(() => {
         fetch(`${API_BASE_URL}/user`, { credentials: "include" })
@@ -25,6 +26,8 @@ const Dashboard = () => {
         await fetch(`${API_BASE_URL}/logout`, { credentials: "include" });
         window.location.href = "/";
     };
+
+    const isPartnerRep = user?.email?.endsWith("@example.org"); // <-- Replace with real logic later
 
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900 px-6 py-10">
@@ -45,8 +48,32 @@ const Dashboard = () => {
                         </button>
                     </div>
 
+                    {isPartnerRep && (
+                        <div className="bg-yellow-100 border border-yellow-300 text-yellow-900 px-4 py-2 mb-6 rounded">
+                            <strong>Partner Dashboard:</strong> You can edit your own campaigns.
+                        </div>
+                    )}
+
+                    {isPartnerRep && (
+                        <div className="flex items-center gap-3 mb-4">
+                            <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-200">
+                                <input
+                                    type="checkbox"
+                                    checked={showOnlyMine}
+                                    onChange={() => setShowOnlyMine(!showOnlyMine)}
+                                />
+                                Show only my campaigns
+                            </label>
+                        </div>
+                    )}
+                    <Link
+                        to="/partner/campaigns/new"
+                        className="inline-block bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded mb-6"
+                    >
+                        + Create New Campaign
+                    </Link>
                     <CampaignFilter onFilterChange={setFilters} />
-                    <ContactGroupList filters={filters} />
+                    <ContactGroupList filters={filters} myOnly={isPartnerRep && showOnlyMine} userEmail={user.email} />
                 </>
             ) : (
                 <p className="text-center text-gray-600">Loading user info...</p>
