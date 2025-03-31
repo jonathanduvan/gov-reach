@@ -1,7 +1,7 @@
 import dotenv from "dotenv";
 import { connectToDatabase } from "../../db.js";
 import Official from "../../models/Official.js";
-import EmailGroup from "../../models/ContactGroup.js";
+import ContactGroup from "../../models/ContactGroup.js";
 
 dotenv.config();
 
@@ -13,7 +13,7 @@ export async function seedTestData() {
 
         // Wipe existing collections
         await Official.deleteMany({});
-        await EmailGroup.deleteMany({});
+        await ContactGroup.deleteMany({});
 
         // Sample officials
         const officials = await Official.insertMany([
@@ -53,7 +53,7 @@ export async function seedTestData() {
         ]);
 
         // Sample campaign
-        await EmailGroup.create({
+        await ContactGroup.create({
             title: "Support California Clean Energy Legislation",
             description: "Urge your officials to support new clean energy bills in California.",
             issues: ["Energy", "Climate"],
@@ -72,6 +72,4 @@ export async function seedTestData() {
 }
 
 // Only run if executed directly via CLI
-if (process.argv[1].includes("seedTestData.js")) {
-    await seedTestData();
-}
+await seedTestData();

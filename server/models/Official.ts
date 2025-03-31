@@ -21,5 +21,4 @@ const officialSchema = new Schema<Official>(
 );
 
 // Export typed model
-const OfficialModel = model<Official>("Official", officialSchema);
-export default OfficialModel;
+export default model<Official>("Official", officialSchema);

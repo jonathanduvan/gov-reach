@@ -3,7 +3,7 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-const MONGODB_URI = process.env.MONGODB_URI || "mongodb://localhost:27017/govreach";
+const MONGODB_URI = process.env.MONGODB_URI || "mongodb://localhost:27017/flashactivist";
 
 /**
  * Connects to MongoDB using Mongoose.

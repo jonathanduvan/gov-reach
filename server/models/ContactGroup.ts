@@ -19,5 +19,4 @@ const contactGroupSchema = new Schema<ContactGroup>(
 contactGroupSchema.index({ partner: 1 });
 
 // Export typed model
-const EmailGroupModel = model<ContactGroup>("EmailGroup", contactGroupSchema);
-export default EmailGroupModel;
+export default model<ContactGroup>("ContactGroup", contactGroupSchema);
