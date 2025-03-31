@@ -11,6 +11,7 @@ import { connectToDatabase } from "./db.js";
 import { sendEmailGmail, sendEmailOutlook } from "./email.js";
 import officialsRouter from "./routes/officials.js";
 import contactGroupsRouter from "./routes/contactGroups.js";
+import partnerRequestRouter from "./routes/partnerRequest.js";
 
 // 2. Load env and connect DB
 dotenv.config();
@@ -34,7 +35,7 @@ app.use(passport.session());
 // 4. Routes
 app.use("/api/officials", officialsRouter);
 app.use("/api/contact-groups", contactGroupsRouter);
-
+app.use("/api/partner-requests", partnerRequestRouter);
 // 5. OAuth Routes
 
 app.get("/auth/google",
