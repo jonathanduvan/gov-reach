@@ -10,6 +10,7 @@ import { SERVER_CONFIG } from "./config.js";
 import { connectToDatabase } from "./db.js";
 import { sendEmailGmail, sendEmailOutlook } from "./email.js";
 import officialsRouter from "./routes/officials.js";
+import issuesRouter from "./routes/issues.js"
 import contactGroupsRouter from "./routes/contactGroups.js";
 import partnerRequestRouter from "./routes/partnerRequest.js";
 
@@ -34,6 +35,7 @@ app.use(passport.session());
 
 // 4. Routes
 app.use("/api/officials", officialsRouter);
+app.use("/api/issues", issuesRouter);
 app.use("/api/contact-groups", contactGroupsRouter);
 app.use("/api/partner-requests", partnerRequestRouter);
 // 5. OAuth Routes
