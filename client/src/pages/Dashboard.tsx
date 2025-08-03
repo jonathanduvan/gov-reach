@@ -3,6 +3,7 @@ import { API_BASE_URL } from "../config";
 import CampaignFilter from "../components/CampaignFilter";
 import ContactGroupList from "../components/ContactGroupList";
 import { Link } from "react-router-dom";
+import { useUser } from "../context/UserContext";
 
 interface User {
     name: string;
@@ -11,16 +12,9 @@ interface User {
 }
 
 const Dashboard = () => {
-    const [user, setUser] = useState<User | null>(null);
     const [filters, setFilters] = useState({ issue: "", partner: "" });
     const [showOnlyMine, setShowOnlyMine] = useState(false);
-
-    useEffect(() => {
-        fetch(`${API_BASE_URL}/user`, { credentials: "include" })
-            .then((res) => res.json())
-            .then((data) => setUser(data))
-            .catch(() => setUser(null));
-    }, []);
+    const { user } = useUser();
 
     const handleLogout = async () => {
         await fetch(`${API_BASE_URL}/logout`, { credentials: "include" });
@@ -70,7 +64,7 @@ const Dashboard = () => {
                         to="/partner/campaigns/new"
                         className="inline-block bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded mb-6"
                     >
-                        + Create New Campaign
+                        + New Flash Campaign
                     </Link>
                     <CampaignFilter onFilterChange={setFilters} />
                     <ContactGroupList filters={filters} myOnly={isPartnerRep && showOnlyMine} userEmail={user.email} />

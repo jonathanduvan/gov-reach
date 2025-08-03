@@ -1,33 +1,54 @@
 // src/context/UserContext.tsx
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
+import { API_BASE_URL } from "../config";
 
-type Mode = "public" | "partner" | "embed";
+export interface User {
+    name: string;
+    email: string;
+    provider: "gmail" | "outlook";
+    role: "admin" | "partner" | "contributor" | "user";
+}
 
-export const UserContext = createContext<{
-    user: any;
-    setUser: (user: any) => void;
-    mode: Mode;
-    setMode: (mode: Mode) => void;
-    partner?: string;
-    setPartner: (partner: string) => void;
-}>({
+interface UserContextType {
+    user: User | null;
+    loading: boolean;
+    refreshUser: () => Promise<void>;
+}
+
+const UserContext = createContext<UserContextType>({
     user: null,
-    setUser: () => { },
-    mode: "public",
-    setMode: () => { },
-    setPartner: () => { }
+    loading: true,
+    refreshUser: async () => { },
 });
 
-export const useUser = () => useContext(UserContext);
+export const UserProvider = ({ children }: { children: React.ReactNode }) => {
+    const [user, setUser] = useState<User | null>(null);
+    const [loading, setLoading] = useState(true);
 
-export const UserProvider = ({ children }) => {
-    const [user, setUser] = useState(null);
-    const [mode, setMode] = useState<Mode>("public");
-    const [partner, setPartner] = useState<string | undefined>(undefined);
+    const fetchUser = async () => {
+        try {
+            const res = await fetch(`${API_BASE_URL}/user`, {
+                credentials: "include",
+            });
+            if (!res.ok) throw new Error("Unauthorized");
+            const data = await res.json();
+            setUser(data);
+        } catch {
+            setUser(null);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchUser();
+    }, []);
 
     return (
-        <UserContext.Provider value={{ user, setUser, mode, setMode, partner, setPartner }}>
+        <UserContext.Provider value={{ user, loading, refreshUser: fetchUser }}>
             {children}
         </UserContext.Provider>
     );
 };
+
+export const useUser = () => useContext(UserContext);

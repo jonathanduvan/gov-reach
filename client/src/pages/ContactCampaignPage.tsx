@@ -4,6 +4,7 @@ import { API_BASE_URL } from "../config";
 import { generateMessageVariations } from "../utils/generateMessageVariations";
 import { ContactGroup } from "../../../shared/types/contactGroup";
 import { Official } from "../../../shared/types/official";
+import { useUser } from "../context/UserContext";
 
 interface User {
     name: string;
@@ -20,16 +21,9 @@ const ContactCampaignPage = () => {
     const [message, setMessage] = useState("");
     const [variations, setVariations] = useState<string[]>([]);
     const [showVariations, setShowVariations] = useState(false);
-    const [user, setUser] = useState<User | null>(null);
-    const [loading, setLoading] = useState(true);
+    const [loadingCampaign, setLoadingCampaign] = useState(true);
 
-    // Fetch user
-    useEffect(() => {
-        fetch(`${API_BASE_URL}/user`, { credentials: "include" })
-            .then(res => res.json())
-            .then(data => setUser(data))
-            .catch(() => setUser(null));
-    }, []);
+    const { user, loading } = useUser();
 
     // Fetch campaign
     useEffect(() => {
@@ -39,11 +33,11 @@ const ContactCampaignPage = () => {
                 setCampaign(data);
                 setMessage(data.messageTemplate);
                 setSelectedOfficials(new Set(data.officials.map((o: Official) => o._id)));
-                setLoading(false);
+                setLoadingCampaign(false);
             })
             .catch(err => {
                 console.error("Error loading campaign:", err);
-                setLoading(false);
+                setLoadingCampaign(false);
             });
     }, [id]);
 
@@ -70,7 +64,7 @@ const ContactCampaignPage = () => {
         setShowVariations(true);
     };
 
-    if (loading) return <p className="text-center text-gray-600 py-10">Loading campaign...</p>;
+    if (loading || loadingCampaign) return <p className="text-center text-gray-600 py-10">Loading campaign...</p>;
     if (!campaign) return <p className="text-center text-red-500 py-10">Campaign not found.</p>;
 
     return (

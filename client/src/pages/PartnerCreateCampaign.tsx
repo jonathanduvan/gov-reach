@@ -1,15 +1,15 @@
 // src/pages/PartnerCreateCampaign.tsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { API_BASE_URL } from "../config";
 import { ContactGroup } from "../../../shared/types/contactGroup";
+import { Official } from "../../../shared/types/official";
 import { useUser } from "../context/UserContext";
-
+import OfficialSelector from "../components/OfficialSelector";
 
 const PartnerCreateCampaign = () => {
     const navigate = useNavigate();
     const { user } = useUser();
-
 
     const [form, setForm] = useState<Partial<ContactGroup>>({
         title: "",
@@ -22,6 +22,18 @@ const PartnerCreateCampaign = () => {
 
     const [status, setStatus] = useState<"idle" | "saving" | "error" | "success">("idle");
 
+    // ✅ Prefill partner field depending on role
+    useEffect(() => {
+        if (!user) return;
+        if (user.role === "admin") {
+            setForm((prev) => ({ ...prev, partner: "Flash Activist" }));
+        } else if (user.role === "partner") {
+            setForm((prev) => ({ ...prev, partner: user.name }));
+        } else {
+            setForm((prev) => ({ ...prev, partner: "Community" }));
+        }
+    }, [user]);
+
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
         setForm({ ...form, [name]: value });
@@ -33,8 +45,8 @@ const PartnerCreateCampaign = () => {
 
         const payload = {
             ...form,
-            createdBy: user.email,
-            editors: [user.email],
+            createdBy: user?.email,
+            editors: [user?.email],
         };
 
         try {
@@ -46,7 +58,6 @@ const PartnerCreateCampaign = () => {
             });
 
             const result = await res.json();
-
             if (!res.ok) throw new Error(result.message || "Unknown error");
 
             setStatus("success");
@@ -70,14 +81,15 @@ const PartnerCreateCampaign = () => {
                     className="w-full border rounded px-3 py-2"
                     required
                 />
+
                 <input
                     name="partner"
                     placeholder="Partner Organization Name"
                     value={form.partner}
-                    onChange={handleChange}
-                    className="w-full border rounded px-3 py-2"
-                    required
+                    readOnly
+                    className="w-full border rounded px-3 py-2 bg-gray-100 text-gray-600"
                 />
+
                 <input
                     name="issues"
                     placeholder="Issue Tags (comma separated)"
@@ -85,6 +97,7 @@ const PartnerCreateCampaign = () => {
                     onChange={(e) => setForm({ ...form, issues: e.target.value.split(",").map(i => i.trim()) })}
                     className="w-full border rounded px-3 py-2"
                 />
+
                 <textarea
                     name="description"
                     placeholder="Short Description"
@@ -93,6 +106,7 @@ const PartnerCreateCampaign = () => {
                     className="w-full border rounded px-3 py-2"
                     rows={3}
                 />
+
                 <textarea
                     name="messageTemplate"
                     placeholder="Message Template"
@@ -101,6 +115,11 @@ const PartnerCreateCampaign = () => {
                     className="w-full border rounded px-3 py-2"
                     rows={6}
                     required
+                />
+
+                <OfficialSelector
+                    selected={form.officials || []}
+                    onChange={(officials) => setForm({ ...form, officials })}
                 />
 
                 <button

@@ -38,6 +38,7 @@ router.get("/:id", async (req: Request, res: Response) => {
 // POST /api/contact-groups - Submit a new campaign
 router.post("/", async (req: Request, res: Response) => {
     try {
+        console.log('got request, trying to create contact group')
         const contactGroup = new ContactGroupModel(req.body);
         await contactGroup.save();
         res.status(201).json({ message: "Campaign submitted for review", contactGroup: contactGroup });
