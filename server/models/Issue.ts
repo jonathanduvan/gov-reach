@@ -1,6 +1,7 @@
 import mongoose, { Schema, model } from "mongoose";
+import type { Issue as IssueType } from "../../shared/types/issue.js";
 
-const issueSchema = new Schema(
+const issueSchema = new Schema<IssueType>(
   {
     name: { type: String, required: true, unique: true },
     aliases: [{ type: String }],
@@ -9,4 +10,4 @@ const issueSchema = new Schema(
   { timestamps: true }
 );
 
-export default model("Issue", issueSchema);
+export default model<IssueType>("Issue", issueSchema);
