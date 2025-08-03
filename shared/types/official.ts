@@ -1,3 +1,22 @@
+export interface Jurisdiction {
+  city?: string;
+  county?: string;
+  congressionalDistrict?: string; // e.g., "FL-22"
+  stateLegislativeDistrict?: string;
+}
+
+export interface CrowdVotes {
+  up: number;
+  down: number;
+}
+
+export interface SourceAttributionEntry {
+  sourceType?: string;
+  submittedBy?: string;
+  submittedAt?: Date;
+  changes?: Record<string, any>;
+}
+
 export interface Official {
   _id?: string;
   fullName: string;
@@ -11,30 +30,14 @@ export interface Official {
   verified: boolean;
 
   // crowdsource / trust metadata
-  crowdVotes?: {
-    up: number;
-    down: number;
-  };
+  crowdVotes?: CrowdVotes;
   confidenceScore?: number;
-  sourceAttributions?: Array<{
-    sourceType: string; // e.g., "user_submission", "scraped"
-    submittedBy: string;
-    submittedAt: Date;
-    changes?: Record<string, any>;
-  }>;
-
-  // optional geo (for lookup)
+  sourceAttributions?: SourceAttributionEntry[];
   location?: {
     type: "Point";
     coordinates: [number, number]; // [lng, lat]
   };
-  jurisdiction?: {
-    city?: string;
-    county?: string;
-    congressionalDistrict?: string;
-    stateLegislativeDistrict?: string;
-  };
-
+  jurisdiction?: Jurisdiction;
   createdAt?: Date;
   updatedAt?: Date;
 }
