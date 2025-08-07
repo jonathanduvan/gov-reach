@@ -10,6 +10,7 @@ declare module "express-session" {
         user?: {
             name: string;
             email: string | null;
+            role: string;
             accessToken?: string;
             refreshToken?: string;
             provider: "gmail" | "outlook";

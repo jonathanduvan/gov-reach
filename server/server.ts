@@ -13,6 +13,9 @@ import officialsRouter from "./routes/officials.js";
 import issuesRouter from "./routes/issues.js"
 import contactGroupsRouter from "./routes/contactGroups.js";
 import partnerRequestRouter from "./routes/partnerRequest.js";
+import officialSubmissionsRouter from "./routes/officialSubmissions.js";
+import batchSubmissionsRouter from "./routes/batchSubmissions.js";
+
 
 // 2. Load env and connect DB
 dotenv.config();
@@ -35,9 +38,13 @@ app.use(passport.session());
 
 // 4. Routes
 app.use("/api/officials", officialsRouter);
+app.use("/api/officials/submissions", officialSubmissionsRouter);
 app.use("/api/issues", issuesRouter);
 app.use("/api/contact-groups", contactGroupsRouter);
 app.use("/api/partner-requests", partnerRequestRouter);
+app.use("/api/officials/submissions", officialSubmissionsRouter);
+app.use("/api/officials/submissions", batchSubmissionsRouter);
+
 // 5. OAuth Routes
 
 app.get("/auth/google",
@@ -70,8 +77,10 @@ app.get("/user", (req: Request, res: Response) => {
         return res.status(401).json({ message: "Not logged in" });
     }
 
+    console.log(req.session.user);
+
     const { name, email, provider } = req.session.user;
-    res.json({ name, email, provider });
+    res.json({ name, email, provider, role: "admin" });
 });
 
 // 7. Logout

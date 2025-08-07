@@ -5,6 +5,8 @@ import Dashboard from "./pages/Dashboard"; // already exists
 import ContactCampaignPage from "./pages/ContactCampaignPage";
 import PartnerEditCampaign from "./pages/PartnerEditCampaign";
 import PartnerCreateCampaign from "./pages/PartnerCreateCampaign";
+import ReviewerDashboard from "./pages/ReviewerDashboard";
+import BatchUpload from "./pages/BatchUpload";
 
 
 function App() {
@@ -13,7 +15,9 @@ function App() {
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/partner" element={<PartnerRequest />} />
+        <Route path="/batch-upload" element={<BatchUpload />} />
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/review-submissions" element={<ReviewerDashboard />} />
         <Route path="/contact/:id" element={<ContactCampaignPage />} />
         <Route path="/partner/campaigns/:id/edit" element={<PartnerEditCampaign />} />
         <Route path="/partner/campaigns/new" element={<PartnerCreateCampaign />} />
