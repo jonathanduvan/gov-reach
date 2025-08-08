@@ -49,7 +49,7 @@ const officialSchema = new Schema<Official>(
       down: { type: Number, default: 0 },
     },
     phoneNumbers: { type: [phoneSchema], default: [] },
-    confidenceScore: { type: Number, default: 0 },
+    confidenceScore: { type: Number, default: 0, index: true },
     sourceAttributions: [
       {
         sourceType: String,
@@ -63,7 +63,6 @@ const officialSchema = new Schema<Official>(
   { timestamps: true }
 );
 
-officialSchema.index({ email: 1 }, { unique: true });
 officialSchema.index({ state: 1, level: 1, "jurisdiction.city": 1, "jurisdiction.county": 1 });
 officialSchema.index({ fullName: "text", role: "text", category: "text" });
 officialSchema.index({ "phoneNumbers.number": 1 });

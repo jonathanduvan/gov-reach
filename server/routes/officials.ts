@@ -2,8 +2,76 @@ import express, { Request, Response } from "express";
 import OfficialModel from "../models/Official.js";
 import IssueModel from "../models/Issue.js";
 import { Official } from "../../shared/types/official.js";
+import { Types } from "mongoose";
 
 const router = express.Router();
+
+/**
+ * GET /api/officials/search
+ * ?city=Coral%20Springs&state=FL&levels=municipal,county,regional,state,federal&issue=housing&q=mayor&limit=50
+ *
+ * Sort: verified desc, confidenceScore desc (fallback 0). Returns phoneNumbers sorted by priority.
+ */
+router.get("/search", async (req: Request, res: Response) => {
+  console.log('search has BEGUN');
+  try {
+    const { city, county, state, issue, q } = req.query as Record<string, string | undefined>;
+    // levels can be "a,b,c" or repeated params (?levels=a&levels=b)
+    const rawLevels = req.query.levels as string | string[] | undefined;
+    const levels =
+      Array.isArray(rawLevels)
+        ? rawLevels
+        : typeof rawLevels === "string"
+        ? rawLevels.split(",").map(s => s.trim()).filter(Boolean)
+        : [];
+
+    const limRaw = req.query.limit as string | undefined;
+    const lim = Math.min(Math.max(parseInt(limRaw || "50", 10) || 50, 1), 100);
+
+    // Debug log
+    console.log("🔎 /api/officials/search", { city, county, state, levels, issue, q, lim });
+
+    const query: any = {};
+
+    if (state) query.state = state.toUpperCase();
+    if (city) query["jurisdiction.city"] = new RegExp(`^${city}$`, "i");
+    if (county) query["jurisdiction.county"] = new RegExp(`^${county}$`, "i");
+    if (levels.length) query.level = { $in: levels };
+
+    if (issue && Types.ObjectId.isValid(issue)) {
+      query.issues = { $in: [new Types.ObjectId(issue)] };
+    }
+
+    if (q) {
+      query.$or = [
+        { fullName: new RegExp(q, "i") },
+        { role: new RegExp(q, "i") },
+        { email: new RegExp(q, "i") },
+        { category: new RegExp(q, "i") },
+      ];
+    }
+
+    const results = await OfficialModel.find(query)
+      .sort({ verified: -1, confidenceScore: -1 }) // confidenceScore should default to 0 in schema
+      .limit(lim)
+      .lean();
+
+    const normalized = results.map((o: any) => ({
+      ...o,
+      phoneNumbers: Array.isArray(o.phoneNumbers)
+        ? [...o.phoneNumbers].sort(
+            (a: any, b: any) => (a?.priority ?? 999) - (b?.priority ?? 999)
+          )
+        : [],
+    }));
+
+    return res.json({ results: normalized });
+  } catch (err) {
+    console.error("Officials /search error:", err);
+    // Always return 500 on server error so the client doesn’t see “400 Bad Request”
+    return res.status(500).json({ message: "Search failed" });
+  }
+});
 
 // GET /api/officials/lookup?lat=...&lng=...&issue=climate&state=CA
 router.get("/lookup", async (req: Request, res: Response) => {
@@ -187,6 +255,17 @@ router.post("/", async (req: Request, res: Response) => {
         console.error("Error creating official:", err);
         res.status(400).json({ message: "Invalid data", error: err.message });
     }
+});
+
+// GET /api/officials/:id
+router.get("/:id", async (req: Request, res: Response) => {
+  try {
+    const o = await OfficialModel.findById(req.params.id);
+    if (!o) return res.status(404).json({ message: "Not found" });
+    res.json(o);
+  } catch (e) {
+    res.status(400).json({ message: "Bad id" });
+  }
 });
 
 export default router;

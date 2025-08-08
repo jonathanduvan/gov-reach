@@ -1,5 +1,14 @@
 export type PhoneLabel = "office" | "district" | "capitol" | "scheduler" | "press" | "other";
 
+export type JurisdictionLevels = "federal" | "state" | "county" | "municipal" | "regional" | "tribal";
+
+export interface Jurisdiction {
+  city?: string;
+  county?: string;
+  congressionalDistrict?: string; // e.g., "FL-22"
+  stateLegislativeDistrict?: string;
+}
+
 export interface PhoneNumber {
   number: string;         // raw or E.164, backend will normalize
   label?: PhoneLabel;
@@ -7,13 +16,6 @@ export interface PhoneNumber {
   verified?: boolean;
   source?: string;        // e.g. URL or "org submitted"
   notes?: string;
-}
-
-export interface Jurisdiction {
-  city?: string;
-  county?: string;
-  congressionalDistrict?: string; // e.g., "FL-22"
-  stateLegislativeDistrict?: string;
 }
 
 export interface CrowdVotes {
@@ -35,7 +37,7 @@ export interface Official {
   email: string;
   state: string;
   category: string;
-  level: "federal" | "state" | "municipal" | "regional" | "tribal";
+  level: JurisdictionLevels;
   issues?: string[]; // Issue _id refs
   partners: string[];
   verified: boolean;

@@ -7,6 +7,7 @@ import PartnerEditCampaign from "./pages/PartnerEditCampaign";
 import PartnerCreateCampaign from "./pages/PartnerCreateCampaign";
 import ReviewerDashboard from "./pages/ReviewerDashboard";
 import BatchUpload from "./pages/BatchUpload";
+import OfficialsLookupPage from "./pages/OfficialsLookupPage";
 
 
 function App() {
@@ -19,6 +20,7 @@ function App() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/review-submissions" element={<ReviewerDashboard />} />
         <Route path="/contact/:id" element={<ContactCampaignPage />} />
+        <Route path="/officials" element={<OfficialsLookupPage />} />
         <Route path="/partner/campaigns/:id/edit" element={<PartnerEditCampaign />} />
         <Route path="/partner/campaigns/new" element={<PartnerCreateCampaign />} />
 

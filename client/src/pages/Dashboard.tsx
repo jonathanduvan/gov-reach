@@ -99,6 +99,12 @@ const Dashboard = () => {
                     >
                         + Reach Out to the Gov
                     </Link>
+                    <Link
+                    to="/officials"
+                    className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded mb-6 ml-3"
+                    >
+                    Find Officials
+                    </Link>
                     <CampaignFilter onFilterChange={setFilters} />
                     <ContactGroupList filters={filters} myOnly={isPartnerRep && showOnlyMine} userEmail={user.email} />
                     +                   {/* Suggest/Edit modal for create flow */}

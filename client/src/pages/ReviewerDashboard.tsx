@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useUser } from "../context/UserContext";
 import { fetchThreads, fetchThreadDetail, resolveSubmission } from "../services/submissions";
+import ReviewMergeModal from "../components/review-merge/ReviewMergeModal";
 
 type Thread = {
   groupKey: string;
@@ -10,6 +11,7 @@ type Thread = {
   latestAt: string;
 };
 
+
 const ReviewerDashboard: React.FC = () => {
   const { isAdmin, isPartner } = useUser();
   const [status, setStatus] = useState<"pending" | "conflict" | "all">("pending");
@@ -18,6 +20,10 @@ const ReviewerDashboard: React.FC = () => {
   const [threads, setThreads] = useState<Thread[]>([]);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [detail, setDetail] = useState<Record<string, any>>({}); // groupKey -> detail
+
+  const [mergeOpen, setMergeOpen] = useState(false);
+  const [mergeLeader, setMergeLeader] = useState<any | null>(null);
+  const [mergeChildren, setMergeChildren] = useState<any[] | undefined>(undefined);
 
   const load = async () => {
     setLoading(true);
@@ -29,6 +35,18 @@ const ReviewerDashboard: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const openMerge = async (t: any) => {
+    setMergeLeader(t.leader);
+    // if thread expanded detail not loaded yet, fetch it once:
+    try {
+      const d = await fetchThreadDetail(t.groupKey);
+      setMergeChildren(d.children || []);
+    } catch {
+      setMergeChildren(undefined);
+    }
+    setMergeOpen(true);
   };
 
   useEffect(() => {
@@ -58,6 +76,14 @@ const ReviewerDashboard: React.FC = () => {
   const reject = async (submissionId: string) => {
     if (!confirm("Reject this submission?")) return;
     await resolveSubmission(submissionId, "reject", { resolution: "not applicable" });
+    await load();
+  };
+
+  // after approve/reject, reload list & close modal (optional)
+  const onCloseMerge = async () => {
+    setMergeOpen(false);
+    setMergeLeader(null);
+    setMergeChildren(undefined);
     await load();
   };
 
@@ -121,7 +147,7 @@ const ReviewerDashboard: React.FC = () => {
                         <div className="flex gap-2">
                           <button
                             className="bg-green-600 text-white px-3 py-1 rounded"
-                            onClick={() => approve(t.leader._id)}
+                            onClick={() => openMerge(t)}
                           >
                             Approve
                           </button>
@@ -177,7 +203,7 @@ const ReviewerDashboard: React.FC = () => {
                           </button>
                           <button
                             className="bg-green-600 text-white px-3 py-1 rounded"
-                            onClick={() => approve(t.leader._id)}
+                            onClick={() => openMerge(t)}
                           >
                             Approve leader
                           </button>
@@ -248,6 +274,12 @@ const ReviewerDashboard: React.FC = () => {
           </section>
         </>
       )}
+      <ReviewMergeModal
+        open={mergeOpen}
+        onClose={onCloseMerge}
+        leader={mergeLeader}
+        childrenSubs={mergeChildren}
+      />
     </div>
   );
 };

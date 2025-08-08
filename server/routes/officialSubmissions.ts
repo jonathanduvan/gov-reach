@@ -160,86 +160,72 @@ router.post("/:id/vote", requireAuth, async (req: Request, res: Response) => {
   }
 });
 
-// Resolve submission (approve/reject) - only admin/partner
-router.post("/:id/resolve", requireAdminOrPartner, async (req: Request, res: Response) => {
+// POST /api/officials/submissions/:id/resolve
+// body: { action: "approve"|"reject", verify?: boolean, fieldOverrides?: {}, closeThread?: boolean, resolution?: string }
+router.post("/:id/resolve", requireAdminOrPartner, async (req, res) => {
   try {
-    const { id } = req.params;
-    const { action, verifierId, resolution, mergeStrategy } = req.body as {
-      action: "approve" | "reject";
-      verifierId: string;
-      resolution?: string;
-      mergeStrategy?: "merge" | "replace";
-    };
-    const submission = await OfficialSubmission.findById(id);
-    if (!submission) return res.status(404).json({ message: "Not found" });
+    const { action, verify, fieldOverrides, closeThread, resolution } = req.body || {};
+    const submission = await OfficialSubmission.findById(req.params.id);
+    if (!submission) return res.status(404).json({ message: "Submission not found" });
 
     if (action === "reject") {
       submission.status = "rejected";
-      submission.verifierId = verifierId;
+      submission.resolution = resolution || "rejected by reviewer";
+      submission.verifierId = (req.session.user as any)?.email || "system";
       submission.verifiedAt = new Date();
-      submission.resolution = resolution || "Rejected";
       await submission.save();
-      return res.json(submission);
+      return res.json({ ok: true, submission });
     }
 
-    // Approve flow
-    if (action === "approve") {
-      let targetOfficial: any = null;
-      if (submission.type === "create") {
-        // create new Official
-        targetOfficial = await OfficialModel.create({
-          ...submission.proposed,
-          confidenceScore: 0,
-          crowdVotes: { up: 0, down: 0 },
-        });
-      } else if (submission.type === "edit") {
-        if (!submission.targetOfficialId) {
-          return res.status(400).json({ message: "Missing targetOfficialId for edit submission" });
-        }
-        targetOfficial = await OfficialModel.findById(submission.targetOfficialId);
-        if (!targetOfficial) return res.status(404).json({ message: "Target official not found" });
-        // merge or replace
-        if (mergeStrategy === "replace") {
-          Object.assign(targetOfficial, submission.proposed);
-        } else {
-          // shallow merge: proposed keys overwrite
-          for (const key of Object.keys(submission.proposed)) {
-            (targetOfficial as any)[key] = (submission.proposed as any)[key];
-          }
-        }
-      }
-
-      if (!targetOfficial) {
-        return res.status(500).json({ message: "Failed to materialize official" });
-      }
-
-      // Append attribution
-      targetOfficial.sourceAttributions = targetOfficial.sourceAttributions || [];
-      targetOfficial.sourceAttributions.push({
-        sourceType: submission.sourceAttribution?.sourceType || "user_submission",
-        submittedBy: submission.submitterId,
-        submittedAt: submission.createdAt,
-        changes: submission.proposed,
-        submissionId: submission._id.toString(),
-      });
-
-      // Optionally mark as verified if resolver is partner/admin
-      // (policy decision: could be implicit or require explicit verify step)
-      await targetOfficial.save();
-
-      submission.status = "approved";
-      submission.verifierId = verifierId;
-      submission.verifiedAt = new Date();
-      submission.resolution = resolution || "Approved";
-      await submission.save();
-
-      return res.json({ submission, official: targetOfficial });
+    if (action !== "approve") {
+      return res.status(400).json({ message: "action must be approve or reject" });
     }
 
-    res.status(400).json({ message: "Unsupported action" });
-  } catch (err) {
-    console.error("Resolve error:", err);
-    res.status(500).json({ message: "Failed to resolve submission" });
+    // Prepare proposed payload (handle legacy issue names just in case)
+    const proposed = submission.proposed || {};
+    if (Array.isArray(proposed.issues) && proposed.issues.length) {
+      // If they look like names (not 24-char ids), normalize them
+      const needNormalize = proposed.issues.some((v: any) => typeof v === "string" && v.length !== 24);
+      if (needNormalize) {
+        const { ids } = await ensureIssuesByNames(proposed.issues as string[]);
+        proposed.issues = ids;
+      }
+    } else {
+      proposed.issues = [];
+    }
+
+    // Load current official if edit
+    const currentOfficial = submission.targetOfficialId
+      ? await OfficialModel.findById(submission.targetOfficialId).lean()
+      : null;
+
+    // Merge + optional verify flag
+    const merged = buildMergedOfficial(currentOfficial, proposed, fieldOverrides);
+    if (verify === true) merged.verified = true;
+
+    // Save to Officials
+    const saved = await saveOfficialFromMerge(submission.type as any, submission.targetOfficialId as any, merged);
+
+    // Mark this submission approved
+    submission.status = "approved";
+    submission.targetOfficialId = saved?._id || submission.targetOfficialId;
+    submission.verifierId = (req.session.user as any)?.email || "system";
+    submission.verifiedAt = new Date();
+    submission.resolution = "approved";
+    await submission.save();
+
+    // Optionally close out the thread (children -> superseded)
+    if (closeThread && submission.groupKey) {
+      await OfficialSubmission.updateMany(
+        { groupKey: submission.groupKey, _id: { $ne: submission._id } },
+        { $set: { status: "superseded" } }
+      );
+    }
+
+    res.json({ ok: true, official: saved, submission });
+  } catch (err: any) {
+    console.error("resolve error:", err);
+    res.status(500).json({ message: "Failed to resolve submission", error: err.message });
   }
 });
 

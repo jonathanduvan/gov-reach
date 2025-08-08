@@ -38,7 +38,6 @@ app.use(passport.session());
 
 // 4. Routes
 app.use("/api/officials", officialsRouter);
-app.use("/api/officials/submissions", officialSubmissionsRouter);
 app.use("/api/issues", issuesRouter);
 app.use("/api/contact-groups", contactGroupsRouter);
 app.use("/api/partner-requests", partnerRequestRouter);
