@@ -8,11 +8,15 @@ import PartnerCreateCampaign from "./pages/PartnerCreateCampaign";
 import ReviewerDashboard from "./pages/ReviewerDashboard";
 import BatchUpload from "./pages/BatchUpload";
 import OfficialsLookupPage from "./pages/OfficialsLookupPage";
+import IssueCurationPage from "./pages/IssueCurationPage";
+import AppNav from "./components/AppNav";
+import AdminHome from "./pages/AdminHome";
 
 
 function App() {
   return (
     <Router>
+      <AppNav />
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/partner" element={<PartnerRequest />} />
@@ -23,6 +27,8 @@ function App() {
         <Route path="/officials" element={<OfficialsLookupPage />} />
         <Route path="/partner/campaigns/:id/edit" element={<PartnerEditCampaign />} />
         <Route path="/partner/campaigns/new" element={<PartnerCreateCampaign />} />
+        <Route path="/admin/issues" element={<IssueCurationPage />} />
+        <Route path="/admin" element={<AdminHome />} />
 
       </Routes>
     </Router>

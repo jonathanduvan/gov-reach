@@ -1,10 +1,10 @@
-import { useEffect, useState } from "react";
-import { API_BASE_URL } from "../config";
+import { useState } from "react";
 import CampaignFilter from "../components/CampaignFilter";
 import ContactGroupList from "../components/ContactGroupList";
 import { Link } from "react-router-dom";
 import { useUser } from "../context/UserContext";
 import SuggestEditModal from "../components/SuggestEditModal";
+import ActionTile from "../components/ActionTile";
 
 const Dashboard = () => {
     const [filters, setFilters] = useState({ issue: "", partner: "" });
@@ -13,13 +13,7 @@ const Dashboard = () => {
 
     const [submitModalOpen, setSubmitModalOpen] = useState(false);
 
-    const handleLogout = async () => {
-        await fetch(`${API_BASE_URL}/logout`, { credentials: "include" });
-        window.location.href = "/";
-    };
-
     const isPartnerRep = isPartner;
-    const canReview = isAdmin || isPartner;
 
     if (loading) {
         return (
@@ -33,53 +27,32 @@ const Dashboard = () => {
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900 px-6 py-10">
             {user ? (
                 <>
-                    <div className="text-center mb-10">
-                        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-                            Welcome, {user.name}
-                        </h1>
-                        <p className="text-gray-600 dark:text-gray-300">
-                            Your email: {user.email} | Provider: {user.provider.toUpperCase()} | Role: {user.role}
-                        </p>
-                        <button
-                            onClick={handleLogout}
-                            className="mt-4 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded"
-                        >
-                            Logout
-                        </button>
-                    </div>
-                    {/* Submit new official */}
-                    <div className="mb-6">
-                        <button
-                        onClick={() => setSubmitModalOpen(true)}
-                        className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded"
-                        >
-                        + Submit Official
-                        </button>
-                    </div>
-                    {canReview && (
-                        <Link
-                            to="/batch-upload"
-                            className="ml-4 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded"
-                        >
-                            Batch Upload
+                    {isAdmin && (
+                    <section className="mb-8">
+                        <h2 className="text-lg font-semibold mb-2">Admin Tools</h2>
+                        <div className="grid sm:grid-cols-3 gap-3">
+                        <Link to="/review-submissions" className="border rounded p-4 bg-white hover:bg-gray-50">
+                            <div className="font-medium">Review Submissions</div>
+                            <div className="text-sm text-gray-600">Resolve threads; approve data.</div>
                         </Link>
-                    )}
+                        <Link to="/admin/issues" className="border rounded p-4 bg-white hover:bg-gray-50">
+                            <div className="font-medium">Issue Curation</div>
+                            <div className="text-sm text-gray-600">Aliases, merges, pending toggle.</div>
+                        </Link>
+                        <Link to="/batch-upload" className="border rounded p-4 bg-white hover:bg-gray-50">
+                            <div className="font-medium">Batch Upload</div>
+                            <div className="text-sm text-gray-600">Import CSV/JSON with preview.</div>
+                        </Link>
+                        </div>
+                    </section>
+                    )}  
+                   
                     {isPartnerRep && (
                         <div className="bg-yellow-100 border border-yellow-300 text-yellow-900 px-4 py-2 mb-6 rounded">
                             <strong>Partner Dashboard:</strong> You can edit your own campaigns.
                         </div>
                     )}
                    {/* Review submissions link for admin/partners */}
-                    {canReview && (
-                        <div className="mb-6">
-                        <Link
-                            to="/review-submissions"
-                            className="inline-block bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded"
-                        >
-                            Review Submissions
-                        </Link>
-                        </div>
-                    )}
                     {isPartnerRep && (
                         <div className="flex items-center gap-3 mb-4">
                             <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-200">
@@ -93,21 +66,46 @@ const Dashboard = () => {
                             </label>
                         </div>
                     )}
-                    <Link
+                    <div className="mb-8">
+                    <h2 className="text-lg font-semibold mb-3">Quick actions</h2>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        <ActionTile
+                        title="Find Officials"
+                        description="Look up verified contacts by city/state and pick who to reach."
+                        to="/officials"
+                        accent="indigo"
+                        icon={
+                            <svg viewBox="0 0 24 24" className="h-5 w-5 text-gray-700" fill="none" stroke="currentColor">
+                            <circle cx="11" cy="11" r="7" strokeWidth="2"/><path d="M21 21l-4.3-4.3" strokeWidth="2"/>
+                            </svg>
+                        }
+                        />
+                        <ActionTile
+                        title="Start a Campaign"
+                        description="Create a draft outreach and prefill officials you select."
                         to="/partner/campaigns/new"
-                        className="inline-block bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded mb-6"
-                    >
-                        + Reach Out to the Gov
-                    </Link>
-                    <Link
-                    to="/officials"
-                    className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded mb-6 ml-3"
-                    >
-                    Find Officials
-                    </Link>
+                        accent="green"
+                        icon={
+                            <svg viewBox="0 0 24 24" className="h-5 w-5 text-gray-700" fill="none" stroke="currentColor">
+                            <path d="M3 5h18M6 10h12M9 15h6" strokeWidth="2" />
+                            </svg>
+                        }
+                        />
+                        <ActionTile
+                        title="Submit an Official"
+                        description="Contribute new info or corrections for review."
+                        onClick={() => setSubmitModalOpen(true)}
+                        accent="blue"
+                        icon={
+                            <svg viewBox="0 0 24 24" className="h-5 w-5 text-gray-700" fill="none" stroke="currentColor">
+                            <path d="M12 5v14M5 12h14" strokeWidth="2"/>
+                            </svg>
+                        }
+                        />
+                    </div>
+                    </div>
                     <CampaignFilter onFilterChange={setFilters} />
                     <ContactGroupList filters={filters} myOnly={isPartnerRep && showOnlyMine} userEmail={user.email} />
-                    +                   {/* Suggest/Edit modal for create flow */}
                     <SuggestEditModal
                         open={submitModalOpen}
                         official={undefined}

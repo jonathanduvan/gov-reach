@@ -5,6 +5,8 @@ import mongoose from "mongoose";
 import { requireAdminOrPartner, requireAuth } from "../middleware/auth.js";
 import { validateAndNormalizeSubmission } from "../middleware/validateSubmission.js";
 import { matchOfficial } from "../middleware/officialMatch.js";
+import { ensureIssuesByNames } from "../services/issueService.js";
+import { buildMergedOfficial, saveOfficialFromMerge } from "../services/mergeOfficial.js";
 
 
 const router = express.Router();
