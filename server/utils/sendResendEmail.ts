@@ -28,7 +28,7 @@ New Partner Request:
         await resend.emails.send({
             from: SERVER_CONFIG.PARTNER_MAILER.FROM_EMAIL,
             to: SERVER_CONFIG.PARTNER_MAILER.TO_EMAIL,
-            subject: 'New Flash Activist Partner Request',
+            subject: 'New GovReach Partner Request',
             text
         });
 

@@ -7,10 +7,10 @@ const LandingPage = () => {
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col items-center justify-center px-6 text-center">
             <div className="max-w-md w-full">
                 <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
-                    ⚡ Flash Activist
+                    GovReach
                 </h1>
                 <p className="text-gray-700 dark:text-gray-300 mb-8">
-                    Take action instantly. Flash Activist lets you send personalized messages to public officials at any level — with guidance on the right people for you to contact. Just start with your personal email below.
+                    Take action instantly. GovReach lets you send personalized messages to public officials at any level — with guidance on the right people for you to contact. Just start with your personal email below.
                 </p>
 
                 <div className="space-y-4 mb-6">

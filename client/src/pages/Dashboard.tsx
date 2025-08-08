@@ -97,7 +97,7 @@ const Dashboard = () => {
                         to="/partner/campaigns/new"
                         className="inline-block bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded mb-6"
                     >
-                        + New Flash Campaign
+                        + Reach Out to the Gov
                     </Link>
                     <CampaignFilter onFilterChange={setFilters} />
                     <ContactGroupList filters={filters} myOnly={isPartnerRep && showOnlyMine} userEmail={user.email} />

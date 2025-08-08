@@ -12,6 +12,23 @@ const jurisdictionSchema = new Schema(
   { _id: false }
 );
 
+const phoneSchema = new Schema(
+  {
+    number: { type: String, trim: true, required: true },
+    label: {
+      type: String,
+      enum: ["office", "district", "capitol", "scheduler", "press", "other"],
+      default: "office",
+    },
+    priority: { type: Number, default: 100 },
+    verified: { type: Boolean, default: false },
+    source: { type: String, trim: true },
+    notes: { type: String, trim: true },
+  },
+  { _id: false }
+);
+
+
 const officialSchema = new Schema<Official>(
   {
     fullName: { type: String, required: true, trim: true },
@@ -31,6 +48,7 @@ const officialSchema = new Schema<Official>(
       up: { type: Number, default: 0 },
       down: { type: Number, default: 0 },
     },
+    phoneNumbers: { type: [phoneSchema], default: [] },
     confidenceScore: { type: Number, default: 0 },
     sourceAttributions: [
       {
@@ -40,10 +58,6 @@ const officialSchema = new Schema<Official>(
         changes: Schema.Types.Mixed,
       },
     ],
-    location: {
-      type: { type: String, enum: ["Point"], default: "Point" },
-      coordinates: { type: [Number], index: "2dsphere" }, // [lng, lat]
-    },
     jurisdiction: jurisdictionSchema, // new structured jurisdiction
   },
   { timestamps: true }
@@ -51,8 +65,7 @@ const officialSchema = new Schema<Official>(
 
 officialSchema.index({ email: 1 }, { unique: true });
 officialSchema.index({ state: 1, level: 1, "jurisdiction.city": 1, "jurisdiction.county": 1 });
-officialSchema.index({ location: "2dsphere" });
 officialSchema.index({ fullName: "text", role: "text", category: "text" });
-
+officialSchema.index({ "phoneNumbers.number": 1 });
 
 export default model<Official>("Official", officialSchema);

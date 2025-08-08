@@ -58,12 +58,6 @@ router.get("/lookup", async (req: Request, res: Response) => {
         level: { $in: ["municipal", "regional"] },
         state: state.toUpperCase(),
         ...issueFilter,
-        location: {
-          $near: {
-            $geometry: point,
-            $maxDistance: 50000,
-          },
-        },
       })
         .sort({ verified: -1, confidenceScore: -1 })
         .lean();

@@ -46,9 +46,9 @@ const PartnerRequest = () => {
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center px-6 py-10">
             <div className="max-w-lg w-full bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
-                <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">🤝 Partner With Flash Activist</h2>
+                <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">🤝 Partner With GovReach</h2>
                 <p className="mb-6 text-sm text-gray-600 dark:text-gray-300">
-                    Submit a campaign idea and we’ll get in touch to help you launch it on Flash Activist.
+                    Submit a campaign idea and we’ll get in touch to help you launch it on GovReach.
                 </p>
 
                 {status === "success" ? (

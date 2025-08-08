@@ -1,3 +1,14 @@
+export type PhoneLabel = "office" | "district" | "capitol" | "scheduler" | "press" | "other";
+
+export interface PhoneNumber {
+  number: string;         // raw or E.164, backend will normalize
+  label?: PhoneLabel;
+  priority?: number;      // lower = shown first (default 100)
+  verified?: boolean;
+  source?: string;        // e.g. URL or "org submitted"
+  notes?: string;
+}
+
 export interface Jurisdiction {
   city?: string;
   county?: string;
@@ -33,11 +44,8 @@ export interface Official {
   crowdVotes?: CrowdVotes;
   confidenceScore?: number;
   sourceAttributions?: SourceAttributionEntry[];
-  location?: {
-    type: "Point";
-    coordinates: [number, number]; // [lng, lat]
-  };
   jurisdiction?: Jurisdiction;
+  phoneNumbers?: PhoneNumber[];
   createdAt?: Date;
   updatedAt?: Date;
 }

@@ -4,7 +4,7 @@
 
 ## Features (current / intended)
 
-- Campaign creation (including “flash” campaigns)
+- Campaign creation
 - Partner and admin verification with visual badges
 - Role-based access: admin, partner, activist
 - Pre-populated campaign metadata based on user context

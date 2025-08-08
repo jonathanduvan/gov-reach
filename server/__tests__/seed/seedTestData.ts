@@ -69,10 +69,6 @@ export async function seedTestData() {
           county: "",
           congressionalDistrict: "CA-SEN",
         },
-        location: {
-          type: "Point",
-          coordinates: [-119.4179, 36.7783],
-        },
       },
       {
         fullName: "Carlos Rivera",
@@ -91,10 +87,6 @@ export async function seedTestData() {
           county: "Los Angeles",
           congressionalDistrict: "CA-28",
         },
-        location: {
-          type: "Point",
-          coordinates: [-118.2437, 34.0522],
-        },
       },
       {
         fullName: "Aisha Khan",
@@ -112,10 +104,6 @@ export async function seedTestData() {
           city: "Oakland",
           county: "Alameda",
           congressionalDistrict: "CA-12",
-        },
-        location: {
-          type: "Point",
-          coordinates: [-122.2711, 37.8044],
         },
       },
     ]);

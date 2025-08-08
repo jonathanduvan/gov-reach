@@ -27,6 +27,7 @@
     "express-session": "^1.18.1",
     "googleapis": "^146.0.0",
     "isomorphic-fetch": "^3.0.0",
+    "libphonenumber-js": "^1.12.10",
     "mongoose": "^8.12.1",
     "multer": "^2.0.2",
     "nodemailer": "^6.10.0",

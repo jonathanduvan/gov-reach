@@ -7,6 +7,7 @@ import { validateAndCleanProposed, ProposedOfficial } from "../utils/validation.
 import { ensureIssuesByNames } from "./issueService.js";
 import { matchOfficial } from "../middleware/officialMatch.js";
 import { computeGroupKey, shallowEqualProposed } from "./submissionGrouping.js";
+import { normalizePhoneArray } from "../utils/phone.js";
 
 const HARD_MATCH = 0.88; // auto-edit threshold
 const SOFT_MATCH = 0.75; // conflict threshold
@@ -99,6 +100,19 @@ function normalizeRowKeys(row: Record<string, any>): Record<string, any> {
       case "note":
       case "source":
         out.sourceNote = v; break;
+      case "phone":
+      case "phonenumber":
+        out.phone = v; break;
+      case "phone1":
+      case "phonenumber1":
+        out.phone1 = v; break;
+      case "phone2":
+      case "phonenumber2":
+        out.phone2 = v; break;
+      case "phonelabel1":
+        out.phoneLabel1 = v; break;
+      case "phonelabel2":
+        out.phoneLabel2 = v; break;
       default:
         // keep unknowns around just in case
         out[k] = v;
@@ -108,6 +122,10 @@ function normalizeRowKeys(row: Record<string, any>): Record<string, any> {
 }
 
 function toProposed(row: any): ProposedOfficial {
+  const phones: any[] = [];
+  if (row.phone)      phones.push({ number: row.phone, label: "office" });
+  if (row.phone1)     phones.push({ number: row.phone1, label: row.phoneLabel1 || "office" });
+  if (row.phone2)     phones.push({ number: row.phone2, label: row.phoneLabel2 || "other" });
   return {
     fullName: row.fullName,
     role: row.role,
@@ -118,6 +136,7 @@ function toProposed(row: any): ProposedOfficial {
     jurisdiction: { city: row.city, county: row.county },
     issues: (row.issues ?? "").toString(), // validator will split if string
     sourceNote: row.sourceNote || undefined,
+    phoneNumbers: phones,
   };
 }
 
@@ -147,6 +166,11 @@ export async function ingestRows(rows: any[], user: SessionUser): Promise<Ingest
     } else {
       cleaned.issues = [];
       (cleaned as any).issueNames = [];
+    }
+
+    // Normalize phone numbers to E.164 and drop invalids
+    if (Array.isArray(cleaned.phoneNumbers)) {
+      (cleaned as any).phoneNumbers = normalizePhoneArray(cleaned.phoneNumbers as any[]);
     }
 
     // classify (email → edit; fuzzy → maybe edit; soft → conflict)

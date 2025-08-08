@@ -10,6 +10,14 @@ export type ProposedOfficial = {
   state?: string;
   category?: string;
   level?: string;
+  phoneNumbers?: Array<{
+    number?: string;
+    label?: string;
+    priority?: number;
+    verified?: boolean;
+    source?: string;
+    notes?: string;
+  }>;
   jurisdiction?: { city?: string; county?: string };
   issues?: string[] | string;
   sourceNote?: string;
@@ -62,6 +70,22 @@ export function validateAndCleanProposed(input: ProposedOfficial) {
   }
   if (Array.isArray(proposed.issues)) {
     proposed.issues = proposed.issues.map(s => (s || "").toString().trim()).filter(Boolean);
+  }
+
+  // Ensure phoneNumbers is a clean array of objects with string numbers
+  if (proposed.phoneNumbers && !Array.isArray(proposed.phoneNumbers)) {
+    errors.push("phoneNumbers must be an array");
+  } else if (Array.isArray(proposed.phoneNumbers)) {
+    proposed.phoneNumbers = proposed.phoneNumbers
+      .map((p) => ({
+        number: (p?.number || "").toString().trim(),
+        label: (p?.label || "").toString().trim() || "office",
+        priority: typeof p?.priority === "number" ? p?.priority : undefined,
+        verified: !!p?.verified,
+        source: (p?.source || "").toString().trim() || undefined,
+        notes: (p?.notes || "").toString().trim() || undefined,
+      }))
+      .filter((p) => p.number); // keep non-empty
   }
 
   return { errors, proposed };
