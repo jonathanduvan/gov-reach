@@ -3,23 +3,43 @@ import OfficialSubmission from "../models/OfficialSubmission.js";
 import OfficialModel from "../models/Official.js";
 import mongoose from "mongoose";
 import { requireAdminOrPartner, requireAuth } from "../middleware/auth.js";
+import { validateAndNormalizeSubmission } from "../middleware/validateSubmission.js";
+import { matchOfficial } from "../middleware/officialMatch.js";
+
 
 const router = express.Router();
 
 // Create a new submission (create or edit)
-router.post("/", requireAuth, async (req: Request, res: Response) => {
+router.post("/", requireAuth, validateAndNormalizeSubmission, async (req: Request, res: Response) => {
   try {
     const {
-      type,
-      targetOfficialId = null,
       proposed,
       submitterId,
       submitterEmail,
       submitterRole,
     } = req.body;
+    var {type, targetOfficialId = null} = req.body;
 
     if (!type || !proposed || !submitterId) {
       return res.status(400).json({ message: "Missing required fields" });
+    }
+
+     // Classify
+    const m = await matchOfficial({
+      email: proposed.email,
+      fullName: proposed.fullName,
+      role: proposed.role,
+      state: proposed.state,
+      level: proposed.level,
+      jurisdiction: proposed.jurisdiction,
+    });
+
+    if (m.method === "email" || (m.method === "fuzzy" && m.score >= 0.88)) {
+      type = "edit";
+      targetOfficialId = m.officialId;
+    } else if (m.method === "none" && m.score >= 0.75) {
+      // soft match -> mark as conflict to force reviewer decision
+      req.body.status = "conflict";
     }
 
     const submission = await OfficialSubmission.create({
@@ -29,7 +49,13 @@ router.post("/", requireAuth, async (req: Request, res: Response) => {
       submitterId,
       submitterEmail,
       submitterRole,
-      status: "pending",
+      status: req.body.status || "pending",
+      dedupe: {
+        method: m.method,
+        score: m.score,
+        candidates: m.candidates,
+        reason: m.reason,
+      },
       sourceAttribution: { originalRaw: req.body },
     });
 
@@ -215,6 +241,89 @@ router.post("/:id/resolve", requireAdminOrPartner, async (req: Request, res: Res
     console.error("Resolve error:", err);
     res.status(500).json({ message: "Failed to resolve submission" });
   }
+});
+
+/**
+ * GET /api/officials/submissions/threads
+ * Query params:
+ *  - status: pending | conflict | approved | rejected | duplicate | all (default: pending)
+ *  - q: search string (name/email/role)
+ *  - limit, skip
+ */
+router.get("/threads", requireAdminOrPartner, async (req, res) => {
+  const status = (req.query.status as string) || "pending";
+  const q = (req.query.q as string) || "";
+  const limit = Math.min(parseInt((req.query.limit as string) || "50", 10), 200);
+  const skip = parseInt((req.query.skip as string) || "0", 10);
+
+  const filter: any = { groupLeaderId: null };
+  if (status !== "all") filter.status = status;
+
+  if (q) {
+    filter.$or = [
+      { "proposed.fullName": { $regex: q, $options: "i" } },
+      { "proposed.email": { $regex: q, $options: "i" } },
+      { "proposed.role": { $regex: q, $options: "i" } },
+    ];
+  }
+
+  const [total, leaders] = await Promise.all([
+    OfficialSubmission.countDocuments(filter),
+    OfficialSubmission.find(filter)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean(),
+  ]);
+
+  // leaders already contain variants[] and relatedCount
+  const threads = leaders.map((l) => ({
+    groupKey: l.groupKey,
+    leader: l,
+    relatedCount: l.relatedCount || 0,
+    variants: l.variants || [], // lightweight samples for the list
+    latestAt: l.updatedAt || l.createdAt,
+  }));
+
+  res.json({ total, limit, skip, threads });
+});
+
+/**
+ * GET /api/officials/submissions/threads/:groupKey
+ * Returns the leader + all child submissions in the thread (for deep review)
+ */
+router.get("/threads/:groupKey", requireAdminOrPartner, async (req, res) => {
+  const { groupKey } = req.params;
+
+  const leader = await OfficialSubmission.findOne({
+    groupKey,
+    groupLeaderId: null,
+  }).lean();
+
+  if (!leader) return res.status(404).json({ message: "Thread not found" });
+
+  const children = await OfficialSubmission.find({
+    groupKey,
+    groupLeaderId: leader._id,
+  })
+    .sort({ createdAt: 1 })
+    .lean();
+
+  // Optional: quick counts by status inside the thread
+  const stats = children.reduce(
+    (acc: any, c) => {
+      acc[c.status] = (acc[c.status] || 0) + 1;
+      return acc;
+    },
+    { [leader.status]: 1 }
+  );
+
+  res.json({
+    groupKey,
+    leader,
+    children,
+    stats,
+  });
 });
 
 export default router;

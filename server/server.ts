@@ -52,11 +52,11 @@ app.get("/auth/google",
 );
 
 app.get("/auth/google/callback",
-    passport.authenticate("google", { failureRedirect: "/" }),
-    (req: Request, res: Response) => {
-        req.session.user = req.user as Express.User;
-        res.redirect(`${SERVER_CONFIG.CLIENT_URL}/dashboard`);
-    }
+  passport.authenticate("google", { failureRedirect: "/" }),
+  (req: Request, res: Response) => {
+    req.session.user = req.user as any;
+    res.redirect(`${SERVER_CONFIG.CLIENT_URL}/dashboard`);
+  }
 );
 
 app.get("/auth/microsoft",
@@ -64,23 +64,19 @@ app.get("/auth/microsoft",
 );
 
 app.get("/auth/microsoft/callback",
-    passport.authenticate("microsoft", { failureRedirect: "/" }),
-    (req: Request, res: Response) => {
-        req.session.user = req.user as Express.User;
-        res.redirect(`${SERVER_CONFIG.CLIENT_URL}/dashboard`);
-    }
+  passport.authenticate("microsoft", { failureRedirect: "/" }),
+  (req: Request, res: Response) => {
+    req.session.user = req.user as any;
+    res.redirect(`${SERVER_CONFIG.CLIENT_URL}/dashboard`);
+  }
 );
 
 // 6. Session: Get user
 app.get("/user", (req: Request, res: Response) => {
-    if (!req.session.user) {
-        return res.status(401).json({ message: "Not logged in" });
-    }
+  if (!req.session.user) return res.status(401).json({ message: "Not logged in" });
 
-    console.log(req.session.user);
-
-    const { name, email, provider } = req.session.user;
-    res.json({ name, email, provider, role: "admin" });
+  const { id, name, email, provider, role } = req.session.user;
+  res.json({ id, name, email, provider, role });
 });
 
 // 7. Logout

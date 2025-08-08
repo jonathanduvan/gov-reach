@@ -3,11 +3,12 @@ import mongoose from "mongoose";
 const userSchema = new mongoose.Schema(
     {
         name: { type: String, required: true },
-        email: { type: String, required: true, unique: true },
+        email: { type: String, required: true, unique: true, lowercase: true, trim: true },
         role: {
             type: String,
             enum: ["admin", "partner", "contributor", "user"],
-            required: true
+            required: true,
+            default: "user"
         },
         approved: { type: Boolean, default: false },
         partnerId: { type: mongoose.Schema.Types.ObjectId, ref: "Partner" },

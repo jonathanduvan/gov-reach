@@ -49,6 +49,8 @@ const officialSchema = new Schema<Official>(
   { timestamps: true }
 );
 
+officialSchema.index({ email: 1 }, { unique: true });
+officialSchema.index({ state: 1, level: 1, "jurisdiction.city": 1, "jurisdiction.county": 1 });
 officialSchema.index({ location: "2dsphere" });
 officialSchema.index({ fullName: "text", role: "text", category: "text" });
 
