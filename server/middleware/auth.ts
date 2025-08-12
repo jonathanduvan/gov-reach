@@ -20,3 +20,10 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction) {
   return res.status(403).json({ message: "Forbidden: insufficient role" });
 }
 
+export function requireRole(...allowed: Array<"admin"|"partner"|"contributor">) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const role = req.session.user?.role;
+    if (!role || !allowed.includes(role)) return res.status(403).json({message:"Forbidden"});
+    next();
+  };
+}

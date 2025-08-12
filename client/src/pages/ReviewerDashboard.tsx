@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useUser } from "../context/UserContext";
 import { fetchThreads, fetchThreadDetail, resolveSubmission } from "../services/submissions";
 import ReviewMergeModal from "../components/review-merge/ReviewMergeModal";
+import { getThreadLock, claimThread, releaseThread } from "../services/submissions";
 
 type Thread = {
   groupKey: string;
@@ -25,6 +26,16 @@ const ReviewerDashboard: React.FC = () => {
   const [mergeLeader, setMergeLeader] = useState<any | null>(null);
   const [mergeChildren, setMergeChildren] = useState<any[] | undefined>(undefined);
 
+  const [locks, setLocks] = useState<Record<string, any>>({});
+
+  async function refreshLock(groupKey: string) {
+    try {
+      const d = await getThreadLock(groupKey);
+      setLocks(prev => ({ ...prev, [groupKey]: d }));
+    } catch {}
+  }
+  useEffect(() => { threads.forEach(t => refreshLock(t.groupKey)); }, [threads]);
+
   const load = async () => {
     setLoading(true);
     try {
@@ -37,9 +48,27 @@ const ReviewerDashboard: React.FC = () => {
     }
   };
 
-  const openMerge = async (t: any) => {
+  async function onClaim(t: any) {
+  try {
+    await claimThread(t.groupKey);
+    await refreshLock(t.groupKey);
+  } catch (e: any) {
+    alert(e.message || "Failed to claim");
+  }
+}
+
+  async function openMerge(t: any) {
+    // must own or claim if locked
+    await refreshLock(t.groupKey);
+    const lk = locks[t.groupKey];
+    if (!lk?.locked || lk?.isMine) {
+      try { await claimThread(t.groupKey); } catch {}
+      await refreshLock(t.groupKey);
+    } else {
+      return alert(`Locked by ${lk.lockedBy}. Try again later.`);
+    }
+
     setMergeLeader(t.leader);
-    // if thread expanded detail not loaded yet, fetch it once:
     try {
       const d = await fetchThreadDetail(t.groupKey);
       setMergeChildren(d.children || []);
@@ -47,7 +76,7 @@ const ReviewerDashboard: React.FC = () => {
       setMergeChildren(undefined);
     }
     setMergeOpen(true);
-  };
+  }
 
   useEffect(() => {
     if (!isAdmin && !isPartner) return;
@@ -144,12 +173,45 @@ const ReviewerDashboard: React.FC = () => {
                             {L.email || "no email"} · {L.jurisdiction?.city || L.city}, {L.state} · level: {L.level}
                           </div>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 items-center">
+                          {(() => {
+                              const lk = locks[t.groupKey];
+                              return (
+                                <>
+                                  {lk?.locked && !lk?.expired && (
+                                    <span className="ml-2 text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded">
+                                      {lk.isMine ? `Claimed by you.` : `Locked by ${lk.lockedBy}`}
+                                    </span>
+                                  )}
+                                  {(!lk?.locked || lk?.expired || lk?.isMine === false) && (
+                                    <button
+                                      className="ml-2 text-xs px-2 py-0.5 border rounded"
+                                      onClick={() => onClaim(t)}
+                                    >
+                                      Claim for review
+                                    </button>
+                                  )}
+                                  {/* Release if it's mine (or you can also show this for admins) */}
+                                  {lk?.locked && lk?.isMine && (
+                                    <button
+                                      className="ml-2 text-xs px-2 py-0.5 border rounded"
+                                      onClick={async () => {
+                                        if (!confirm("Release this lock so others can review?")) return;
+                                        await releaseThread(t.groupKey);
+                                        await refreshLock(t.groupKey);
+                                      }}
+                                    >
+                                      Release
+                                    </button>
+                                  )}
+                                </>
+                              );
+                            })()}
                           <button
                             className="bg-green-600 text-white px-3 py-1 rounded"
                             onClick={() => openMerge(t)}
                           >
-                            Approve
+                            Review / Merge
                           </button>
                           <button
                             className="bg-red-600 text-white px-3 py-1 rounded"
@@ -194,7 +256,40 @@ const ReviewerDashboard: React.FC = () => {
                             {L.email || "no email"} · {L.jurisdiction?.city || L.city}, {L.state} · level: {L.level} · related: {t.relatedCount}
                           </div>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 items-center">
+                           {(() => {
+                            const lk = locks[t.groupKey];
+                            return (
+                              <>
+                                {lk?.locked && !lk?.expired && (
+                                  <span className="ml-2 text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded">
+                                    {lk.isMine ? `Claimed by you` : `Locked by ${lk.lockedBy}`}
+                                  </span>
+                                )}
+                                {(!lk?.locked || lk?.expired || lk?.isMine === false) && (
+                                  <button
+                                    className="ml-2 text-xs px-2 py-0.5 border rounded"
+                                    onClick={() => onClaim(t)}
+                                  >
+                                    Claim for review
+                                  </button>
+                                )}
+                                {/* Release if it's mine (or you can also show this for admins) */}
+                                {lk?.locked && lk?.isMine && (
+                                  <button
+                                    className="ml-2 text-xs px-2 py-0.5 border rounded"
+                                    onClick={async () => {
+                                      if (!confirm("Release this lock so others can review?")) return;
+                                      await releaseThread(t.groupKey);
+                                      await refreshLock(t.groupKey);
+                                    }}
+                                  >
+                                    Release
+                                  </button>
+                                )}
+                              </>
+                            );
+                          })()}
                           <button
                             className="text-blue-700 underline"
                             onClick={() => toggleExpand(t.groupKey)}

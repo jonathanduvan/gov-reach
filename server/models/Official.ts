@@ -64,6 +64,7 @@ const officialSchema = new Schema<Official>(
 );
 
 officialSchema.index({ state: 1, level: 1, "jurisdiction.city": 1, "jurisdiction.county": 1 });
+officialSchema.index({ verified: -1, confidenceScore: -1 });
 officialSchema.index({ fullName: "text", role: "text", category: "text" });
 officialSchema.index({ "phoneNumbers.number": 1 });
 

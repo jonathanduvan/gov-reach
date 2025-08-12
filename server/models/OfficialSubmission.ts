@@ -69,5 +69,7 @@ const submissionSchema = new Schema(
 
 submissionSchema.index({ "proposed.email": 1 });
 submissionSchema.index({ status: 1, submitterId: 1 });
+submissionSchema.index({ groupKey: 1, createdAt: -1 });
+submissionSchema.index({ status: 1, createdAt: -1 });
 
 export default model("OfficialSubmission", submissionSchema);

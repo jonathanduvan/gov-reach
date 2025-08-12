@@ -34,6 +34,7 @@ issueSchema.pre("validate", function (next) {
 });
 
 // quick text search on name/aliases
+issueSchema.index({ slug: 1 }, { unique: true });
 issueSchema.index({ name: "text", aliases: "text" });
 
 export default model<IssueType>("Issue", issueSchema);

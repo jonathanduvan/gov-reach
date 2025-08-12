@@ -42,7 +42,6 @@ export async function resolveSubmission(submissionId: string, action: "approve" 
   return res.json();
 }
 
-
 export async function fetchThreads(params: {
   status?: string;
   q?: string;
@@ -68,4 +67,34 @@ export async function fetchThreadDetail(groupKey: string) {
   });
   if (!res.ok) throw new Error(await res.text());
   return res.json();
+}
+
+export async function getThreadLock(groupKey: string) {
+  const r = await fetch(`${API_BASE_URL}/api/officials/submissions/threads/${groupKey}/lock`, { credentials: "include" });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+export async function claimThread(groupKey: string) {
+  const r = await fetch(`${API_BASE_URL}/api/officials/submissions/threads/${groupKey}/claim`, {
+    method: "POST", credentials: "include"
+  });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+export async function releaseThread(groupKey: string) {
+  const r = await fetch(`${API_BASE_URL}/api/officials/submissions/threads/${groupKey}/release`, {
+    method: "POST", credentials: "include"
+  });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+export async function fetchThreadEvents(groupKey: string, limit = 20) {
+  const r = await fetch(`${API_BASE_URL}/api/officials/submissions/threads/${groupKey}/events?limit=${limit}`, {
+    credentials: "include",
+  });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json(); // { events: [...] }
 }

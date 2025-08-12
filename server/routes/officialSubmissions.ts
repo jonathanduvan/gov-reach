@@ -7,9 +7,15 @@ import { validateAndNormalizeSubmission } from "../middleware/validateSubmission
 import { matchOfficial } from "../middleware/officialMatch.js";
 import { ensureIssuesByNames } from "../services/issueService.js";
 import { buildMergedOfficial, saveOfficialFromMerge } from "../services/mergeOfficial.js";
-
+import ThreadLock from "../models/ThreadLock.js";
+import { logReviewEvent } from "../services/audit.js";
+import { emitEvent } from "../services/events.js";
 
 const router = express.Router();
+
+const LOCK_TTL_MIN = Number(process.env.REVIEW_LOCK_TTL_MINUTES || 30);
+const isExpired = (d: Date) => !d || d.getTime() < Date.now() - LOCK_TTL_MIN * 60 * 1000;
+
 
 // Create a new submission (create or edit)
 router.post("/", requireAuth, validateAndNormalizeSubmission, async (req: Request, res: Response) => {
@@ -126,6 +132,18 @@ router.post("/:id/vote", requireAuth, async (req: Request, res: Response) => {
     if (!["up", "down"].includes(type)) {
       return res.status(400).json({ message: "Invalid vote type" });
     }
+    const sub = await OfficialSubmission.findById(req.params.id).lean();
+    if (!sub) return res.status(404).json({ message: "Submission not found" });
+
+    // enforce lock if thread exists (groupKey present) and not expired
+    if (sub.groupKey) {
+      const lock = await ThreadLock.findOne({ groupKey: sub.groupKey });
+      const meEmail = req.session.user!.email!;
+      const meRole  = req.session.user!.role!;
+      if (lock && !isExpired(lock.lockedAt) && lock.lockedBy !== meEmail && meRole !== "admin") {
+        return res.status(423).json({ message: `Thread locked by ${lock.lockedBy}` });
+      }
+    }
     const submission = await OfficialSubmission.findById(id);
     if (!submission) return res.status(404).json({ message: "Not found" });
 
@@ -165,30 +183,65 @@ router.post("/:id/vote", requireAuth, async (req: Request, res: Response) => {
 // POST /api/officials/submissions/:id/resolve
 // body: { action: "approve"|"reject", verify?: boolean, fieldOverrides?: {}, closeThread?: boolean, resolution?: string }
 router.post("/:id/resolve", requireAdminOrPartner, async (req, res) => {
+  const LOCK_TTL_MIN = Number(process.env.REVIEW_LOCK_TTL_MINUTES || 30);
+  const isExpired = (d: Date) => !d || d.getTime() < Date.now() - LOCK_TTL_MIN * 60 * 1000;
+
   try {
-    const { action, verify, fieldOverrides, closeThread, resolution } = req.body || {};
+    const {
+      action: rawAction,
+      verify = false,
+      fieldOverrides = {},
+      closeThread = false,
+      resolution, // for reject
+    } = req.body || {};
+
     const submission = await OfficialSubmission.findById(req.params.id);
     if (!submission) return res.status(404).json({ message: "Submission not found" });
 
+    // Enforce lock (if thread)
+    if (submission.groupKey) {
+      const lock = await ThreadLock.findOne({ groupKey: submission.groupKey });
+      const meEmail = req.session.user!.email!;
+      const meRole = req.session.user!.role!;
+      if (lock && !isExpired(lock.lockedAt) && lock.lockedBy !== meEmail && meRole !== "admin") {
+        return res.status(423).json({ message: `Thread locked by ${lock.lockedBy}` });
+      }
+    }
+
+    const action = rawAction === "approve" || rawAction === "reject" ? rawAction : null;
+    if (!action) return res.status(400).json({ message: "action must be 'approve' or 'reject'" });
+
+    // -------- REJECT --------
     if (action === "reject") {
       submission.status = "rejected";
       submission.resolution = resolution || "rejected by reviewer";
       submission.verifierId = (req.session.user as any)?.email || "system";
       submission.verifiedAt = new Date();
       await submission.save();
+
+      await logReviewEvent({
+        reqUser: { email: req.session.user!.email!, role: req.session.user!.role! },
+        groupKey: submission.groupKey || submission._id.toString(),
+        submissionId: submission._id.toString(),
+        action: "reject",
+        summary: `Rejected (${submission.resolution})`,
+        payload: {
+          resolution: submission.resolution,
+          dedupe: submission.dedupe || null,
+        },
+      });
       return res.json({ ok: true, submission });
     }
 
-    if (action !== "approve") {
-      return res.status(400).json({ message: "action must be approve or reject" });
-    }
-
-    // Prepare proposed payload (handle legacy issue names just in case)
+    // -------- APPROVE / MERGE --------
     const proposed = submission.proposed || {};
+
+    // Normalize issues if names given
     if (Array.isArray(proposed.issues) && proposed.issues.length) {
-      // If they look like names (not 24-char ids), normalize them
-      const needNormalize = proposed.issues.some((v: any) => typeof v === "string" && v.length !== 24);
-      if (needNormalize) {
+      const looksLikeNames = proposed.issues.some(
+        (v: any) => typeof v === "string" && !/^[a-f0-9]{24}$/i.test(v)
+      );
+      if (looksLikeNames) {
         const { ids } = await ensureIssuesByNames(proposed.issues as string[]);
         proposed.issues = ids;
       }
@@ -196,19 +249,23 @@ router.post("/:id/resolve", requireAdminOrPartner, async (req, res) => {
       proposed.issues = [];
     }
 
-    // Load current official if edit
+    // Load current official (if edit/update)
     const currentOfficial = submission.targetOfficialId
       ? await OfficialModel.findById(submission.targetOfficialId).lean()
       : null;
 
-    // Merge + optional verify flag
+    // Merge
     const merged = buildMergedOfficial(currentOfficial, proposed, fieldOverrides);
     if (verify === true) merged.verified = true;
 
-    // Save to Officials
-    const saved = await saveOfficialFromMerge(submission.type as any, submission.targetOfficialId as any, merged);
+    // Save (create or update)
+    const saved = await saveOfficialFromMerge(
+      submission.type as "create" | "edit",
+      submission.targetOfficialId as any,
+      merged
+    );
 
-    // Mark this submission approved
+    // Update submission
     submission.status = "approved";
     submission.targetOfficialId = saved?._id || submission.targetOfficialId;
     submission.verifierId = (req.session.user as any)?.email || "system";
@@ -216,18 +273,39 @@ router.post("/:id/resolve", requireAdminOrPartner, async (req, res) => {
     submission.resolution = "approved";
     await submission.save();
 
-    // Optionally close out the thread (children -> superseded)
+    // Optionally close thread (mark siblings)
     if (closeThread && submission.groupKey) {
       await OfficialSubmission.updateMany(
         { groupKey: submission.groupKey, _id: { $ne: submission._id } },
         { $set: { status: "superseded" } }
       );
+      // Release lock if any
+      await ThreadLock.deleteOne({ groupKey: submission.groupKey });
     }
 
-    res.json({ ok: true, official: saved, submission });
+    // Audit log
+    const summary = `Approved${verify ? " & verified" : ""}${closeThread ? " · closed thread" : ""}`;
+    await logReviewEvent({
+      reqUser: { email: req.session.user!.email!, role: req.session.user!.role! },
+      groupKey: submission.groupKey || submission._id.toString(),
+      submissionId: submission._id.toString(),
+      action: "approve",
+      summary,
+      payload: {
+        targetOfficialId: submission.targetOfficialId || null,
+        fieldOverrides: fieldOverrides || null,
+        verify: !!verify,
+        closeThread: !!closeThread,
+        dedupe: submission.dedupe || null,
+      },
+    });
+
+    emitEvent("official.updated", { officialId: saved._id, submissionId: submission._id });
+
+    return res.json({ ok: true, official: saved, submission });
   } catch (err: any) {
     console.error("resolve error:", err);
-    res.status(500).json({ message: "Failed to resolve submission", error: err.message });
+    return res.status(500).json({ message: "Failed to resolve submission", error: err.message });
   }
 });
 

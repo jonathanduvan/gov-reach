@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useMergeState } from "../../hooks/useMergeState";
 import { FIELDS } from "../../constants/reviewFields";
 import VariantsList from "./VariantsList";
@@ -6,6 +6,8 @@ import SideBySideSummary from "./SideBySideSummary";
 import SourceEvidence from "./SourceEvidence";
 import DedupeContext from "./DedupeContext";
 import FieldMergeSection from "./FieldMergeSection";
+import { claimThread, fetchThreadEvents } from "../../services/submissions";
+
 
 type Props = {
   open: boolean;
@@ -24,6 +26,8 @@ const ReviewMergeModal: React.FC<Props> = ({ open, onClose, leader, childrenSubs
     approve, reject, markConflict,
   } = useMergeState(open, leader, childrenSubs);
 
+  const [events, setEvents] = useState<any[]>([]);
+
   // keyboard hooks (↑/↓/Enter) kept inside the hook? If not, wire here:
   useEffect(() => {
     if (!open) return;
@@ -35,6 +39,25 @@ const ReviewMergeModal: React.FC<Props> = ({ open, onClose, leader, childrenSubs
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open, activeVariantIdx, variantSources.length, setActiveVariantIdx, applyVariant]);
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      if (!open || !leader?.groupKey) return setEvents([]);
+      try {
+        const { events } = await fetchThreadEvents(leader.groupKey, 10);
+        if (active) setEvents(events);
+      } catch { if (active) setEvents([]); }
+    })();
+    return () => { active = false; };
+  }, [open, leader?.groupKey]);
+
+  useEffect(() => {
+    if (!open || !leader?.groupKey) return;
+    const key = leader.groupKey;
+    const id = window.setInterval(() => claimThread(key).catch(() => {}), 10 * 60 * 1000); // every 10m
+    return () => window.clearInterval(id);
+  }, [open, leader?.groupKey]);
 
   if (!open) return null;
 
@@ -72,6 +95,21 @@ const ReviewMergeModal: React.FC<Props> = ({ open, onClose, leader, childrenSubs
             />
             <SourceEvidence leader={leader} />
             <DedupeContext leader={leader} />
+            <div className="border rounded">
+              <div className="px-3 py-2 text-sm font-medium border-b bg-gray-50">Activity</div>
+              <ul className="p-3 space-y-2 text-sm">
+                {events.length === 0 ? (
+                  <li className="text-gray-600">No recent activity.</li>
+                ) : events.map((ev) => (
+                  <li key={ev._id} className="border rounded p-2">
+                    <div className="text-xs text-gray-500">{new Date(ev.createdAt).toLocaleString()}</div>
+                    <div className="font-medium">{ev.action}</div>
+                    <div className="text-gray-700">{ev.summary || "-"}</div>
+                    <div className="text-xs text-gray-500">{ev.actorEmail} · {ev.actorRole}</div>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </aside>
 
           {/* Right column */}
