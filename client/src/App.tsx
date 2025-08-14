@@ -17,6 +17,7 @@ function App() {
   return (
     <Router>
       <AppNav />
+      <main className="max-w-6xl mx-auto px-4 py-6">
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/partner" element={<PartnerRequest />} />
@@ -29,8 +30,8 @@ function App() {
         <Route path="/partner/campaigns/new" element={<PartnerCreateCampaign />} />
         <Route path="/admin/issues" element={<IssueCurationPage />} />
         <Route path="/admin" element={<AdminHome />} />
-
       </Routes>
+      </main>
     </Router>
   );
 }

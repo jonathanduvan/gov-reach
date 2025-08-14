@@ -1,3 +1,61 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Light theme tokens */
+:root {
+  --bg-app: theme(colors.neutral.50);
+  --bg-surface: #fff;
+  --text: theme(colors.neutral.900);
+  --muted: theme(colors.neutral.600);
+  --border: theme(colors.neutral.200);
+}
+
+/* Dark theme tokens */
+.dark {
+  --bg-app: theme(colors.neutral.900);
+  --bg-surface: theme(colors.neutral.800);
+  --text: theme(colors.neutral.100);
+  --muted: theme(colors.neutral.400);
+  --border: theme(colors.neutral.700);
+}
+
+body {
+  @apply bg-[var(--bg-app)] text-[var(--text)] font-sans;
+}
+
+/* Reusable components */
+@layer components {
+  .btn-primary {
+    @apply bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded shadow-sm;
+  }
+  .btn-secondary {
+    @apply bg-accent-600 hover:bg-accent-700 text-white px-4 py-2 rounded;
+  }
+  .btn-quiet {
+    @apply border border-[var(--border)] text-[var(--text)] hover:bg-neutral-100 dark:hover:bg-neutral-700 px-4 py-2 rounded;
+  }
+  .card {
+    @apply bg-[var(--bg-surface)] rounded shadow-card border border-[var(--border)];
+  }
+
+  /* Role badges (non-warning palette, good contrast) */
+  .badge {
+    @apply text-[18px] px-2 py-0.5  border;
+  }
+  .badge-admin {
+    @apply bg-role-admin-50 text-role-admin-700 border-role-admin-200 dark:bg-role-admin-950/40 dark:text-role-admin-200 dark:border-role-admin-900;
+  }
+  .badge-partner {
+    @apply bg-role-partner-50 text-role-partner-700 border-role-partner-200 dark:bg-role-partner-950/40 dark:text-role-partner-200 dark:border-role-partner-900;
+  }
+  .badge-contributor {
+    @apply bg-role-contributor-50 text-role-contributor-700 border-role-contributor-200 dark:bg-role-contributor-950/40 dark:text-role-contributor-200 dark:border-role-contributor-900;
+  }
+  .badge-user {
+    @apply bg-role-user-50 text-role-user-700 border-role-user-200 dark:bg-role-user-950/40 dark:text-role-user-200 dark:border-role-user-900;
+  }
+  .badge-guest {
+    @apply bg-role-guest-50 text-role-guest-700 border-role-guest-200 dark:bg-role-guest-950/40 dark:text-role-guest-200 dark:border-role-guest-900;
+  }
+}
