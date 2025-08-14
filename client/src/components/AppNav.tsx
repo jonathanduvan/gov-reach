@@ -124,8 +124,7 @@ export default function AppNav() {
           {isAdmin && (
             <section>
               <div className="px-3 pb-2 text-[11px] uppercase tracking-wide text-gray-500">Admin</div>
-              <DrawerLink to="/admin">🛠️ Admin Home</DrawerLink>
-              <DrawerLink to="/admin/issues">🏷️ Issue Curation</DrawerLink>
+                <DrawerLink to="/admin/issues">🏷️ Issue Curation</DrawerLink>
             </section>
           )}
 

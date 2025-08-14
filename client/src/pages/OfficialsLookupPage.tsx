@@ -3,6 +3,7 @@ import { searchOfficials } from "../services/officials";
 import SuggestEditModal from "../components/SuggestEditModal";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "../context/UserContext";
+import OfficialQuickViewModal from "../components/OfficialQuickViewModal";
 
 // TODO replace with shared types
 const ALL_LEVELS = ["municipal","county","regional","state","federal","tribal"];
@@ -65,6 +66,8 @@ const OfficialsLookupPage: React.FC = () => {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<number>(25);
 
+  const [viewOfficial, setViewOfficial] = useState<any | null>(null);
+
   const total = results.length;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const pageStart = (page - 1) * pageSize;
@@ -74,6 +77,12 @@ const OfficialsLookupPage: React.FC = () => {
     () => results.slice(pageStart, pageEnd),
     [results, pageStart, pageEnd]
   );
+
+  function handleRowClick(e: React.MouseEvent, official: any) {
+    const target = e.target as HTMLElement;
+    if (target.closest("a,button,input,label")) return; // ignore clicks on controls
+    setViewOfficial(official);
+  }
 
   const anySelected = useMemo(() => Object.values(selectedIds).some(Boolean), [selectedIds]);
 
@@ -309,7 +318,6 @@ const OfficialsLookupPage: React.FC = () => {
               <th className="text-left px-3 py-2 border-b">Location</th>
               <th className="text-left px-3 py-2 border-b">Email</th>
               <th className="text-left px-3 py-2 border-b">Phones</th>
-              <th className="text-right px-3 py-2 border-b">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -321,20 +329,29 @@ const OfficialsLookupPage: React.FC = () => {
               pageRows.map((o) => {
                 const primaryPhone = (o.phoneNumbers || [])[0]?.number;
                 return (
-                  <tr key={o._id} className="odd:bg-white even:bg-gray-50">
+                  <tr
+                    key={o._id}
+                    className="odd:bg-white even:bg-gray-50 hover:bg-gray-100 cursor-pointer"
+                    onClick={(e) => handleRowClick(e, o)}
+                  >
                     <td className="px-3 py-2 align-top">
                       <input
                         type="checkbox"
                         checked={!!selectedIds[o._id]}
                         onChange={() => togglePick(o._id)}
                         aria-label={`Select ${o.fullName}`}
+                        // prevent row click
+                        onClick={(e) => e.stopPropagation()}
                       />
                     </td>
                     <td className="px-3 py-2 align-top">
                       <div className="font-medium">{o.fullName}</div>
-                      <div className="text-xs text-gray-600">{o.role}
+                      <div className="text-xs text-gray-600">
+                        {o.role}
                         {o.verified && (
-                          <span className="ml-2 text-[10px] bg-green-100 text-green-800 px-1.5 py-0.5 rounded align-middle">verified</span>
+                          <span className="ml-2 text-[10px] bg-green-100 text-green-800 px-1.5 py-0.5 rounded align-middle">
+                            verified
+                          </span>
                         )}
                       </div>
                     </td>
@@ -350,7 +367,11 @@ const OfficialsLookupPage: React.FC = () => {
                     </td>
                     <td className="px-3 py-2 align-top">
                       {o.email ? (
-                        <a className="underline text-blue-700 break-all" href={`mailto:${o.email}`} target="_blank" rel="noreferrer">
+                        <a
+                          className="underline text-blue-700 break-all"
+                          href={`mailto:${o.email}`}
+                          onClick={(e) => e.stopPropagation()} // avoid row click
+                        >
                           {o.email}
                         </a>
                       ) : <span className="text-gray-500">no email</span>}
@@ -369,27 +390,8 @@ const OfficialsLookupPage: React.FC = () => {
                         </div>
                       ) : <span className="text-gray-500">—</span>}
                     </td>
-                    <td className="px-3 py-2 align-top text-right">
-                      <div className="inline-flex gap-2">
-                        {primaryPhone && (
-                          <a className="underline text-blue-700 text-sm" href={`tel:${primaryPhone}`} rel="noreferrer">Call</a>
-                        )}
-                        <button
-                          className="px-2 py-1 border rounded text-sm"
-                          onClick={() => setEditOpenId(o._id)}
-                        >
-                          Suggest edit
-                        </button>
-                      </div>
-                      {editOpenId === o._id && (
-                        <SuggestEditModal
-                          open={true}
-                          official={o}
-                          onClose={() => setEditOpenId(null)}
-                          onSubmitted={() => setEditOpenId(null)}
-                        />
-                      )}
-                    </td>
+
+                    {/* removed Actions cell completely */}
                   </tr>
                 );
               })
@@ -419,6 +421,11 @@ const OfficialsLookupPage: React.FC = () => {
           You can find officials without logging in. To create a campaign, please log in first.
         </div>
       )}
+      <OfficialQuickViewModal
+        open={!!viewOfficial}
+        official={viewOfficial}
+        onClose={() => setViewOfficial(null)}
+      />
     </div>
   );
 };
