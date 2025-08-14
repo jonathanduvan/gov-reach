@@ -43,13 +43,13 @@ const officialSchema = new Schema<Official>(
     },
     issues: [{ type: Schema.Types.ObjectId, ref: "Issue", index: true }], // new
     partners: [{ type: String, trim: true }],
-    verified: { type: Boolean, default: false, index: true },
+    verified: { type: Boolean, default: false},
     crowdVotes: {
       up: { type: Number, default: 0 },
       down: { type: Number, default: 0 },
     },
     phoneNumbers: { type: [phoneSchema], default: [] },
-    confidenceScore: { type: Number, default: 0, index: true },
+    confidenceScore: { type: Number, default: 0},
     sourceAttributions: [
       {
         sourceType: String,
@@ -64,7 +64,6 @@ const officialSchema = new Schema<Official>(
 );
 
 officialSchema.index({ state: 1, level: 1, "jurisdiction.city": 1, "jurisdiction.county": 1 });
-officialSchema.index({ verified: -1, confidenceScore: -1 });
 officialSchema.index({ fullName: "text", role: "text", category: "text" });
 officialSchema.index({ "phoneNumbers.number": 1 });
 

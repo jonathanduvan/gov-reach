@@ -25,3 +25,10 @@ export async function sendEmail(provider: "gmail" | "outlook", payload: {
     });
     return res.json();
 }
+
+export async function reverseGeocode(lat: number, lng: number, signal?: AbortSignal) {
+  const url = `${API_BASE_URL}/api/geo/reverse?lat=${encodeURIComponent(lat)}&lng=${encodeURIComponent(lng)}`;
+  const res = await fetch(url, { headers: { Accept: "application/json" }, credentials: "include", signal });
+  if (!res.ok) throw new Error(`reverse geocode failed ${res.status}`);
+  return res.json() as Promise<{ city: string; county: string; state: string; stateAbbr: string; raw: any }>;
+}

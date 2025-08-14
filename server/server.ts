@@ -16,7 +16,7 @@ import partnerRequestRouter from "./routes/partnerRequest.js";
 import officialSubmissionsRouter from "./routes/officialSubmissions.js";
 import batchSubmissionsRouter from "./routes/batchSubmissions.js";
 import ThreadLockRouter from "./routes/threadLock.js"
-
+import GeoRouter from "./routes/geo.js";
 
 // 2. Load env and connect DB
 dotenv.config();
@@ -45,7 +45,7 @@ app.use("/api/partner-requests", partnerRequestRouter);
 app.use("/api/officials/submissions", officialSubmissionsRouter);
 app.use("/api/officials/submissions", batchSubmissionsRouter);
 app.use("/api/officials/submissions", ThreadLockRouter);
-
+app.use("/api/geo", GeoRouter);
 
 // 5. OAuth Routes
 
