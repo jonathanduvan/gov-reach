@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { useUser } from "../context/UserContext";
 import OfficialQuickViewModal from "../components/OfficialQuickViewModal";
 import FilterBar from "../components/FilterBar";
-import { reverseGeocode } from "../api"; // <- server proxy: GET /api/geo/reverse?lat=...&lng=...
+import { reverseGeocode } from "../api";
 import { getPositionSmart, explainGeoError } from "../utils/geoClient";
 
 const ALL_LEVELS = ["municipal", "county", "regional", "state", "federal", "tribal"] as const;

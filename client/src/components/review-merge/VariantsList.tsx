@@ -1,54 +1,78 @@
+// src/components/review/VariantsList.tsx
 import React from "react";
-import { VariantSource } from "../../types/review";
-import { FIELDS } from "../../constants/reviewFields";
-import { classNames, get, jsonEq } from "../../utils/mergeUtils";
+
+type Variant = {
+  label: string;
+  official: any; // minimal: fullName, role, state, jurisdiction?.city
+  meta?: { score?: number; reason?: string; cls?: string };
+};
 
 type Props = {
-  canonical: any | null;
-  variantSources: VariantSource[];
   activeVariantIdx: number;
   setActiveVariantIdx: (i: number) => void;
+
+  // NEW: grouped lists
+  likely: Variant[];
+  possible: Variant[];
+  hiddenGeo: Variant[];           // other cities/counties, hidden by default
+  showHidden: boolean;
+  setShowHidden: (b: boolean) => void;
 };
 
-const VariantsList: React.FC<Props> = ({ canonical, variantSources, activeVariantIdx, setActiveVariantIdx }) => {
-  return (
+export default function VariantsList({
+  activeVariantIdx, setActiveVariantIdx,
+  likely, possible, hiddenGeo, showHidden, setShowHidden
+}: Props) {
+  const Section = ({ title, items, offset }: { title: string; items: Variant[]; offset: number }) => (
     <div className="border rounded">
-      <div className="px-3 py-2 text-sm font-medium border-b bg-gray-50">Variants</div>
-      <ul className="max-h-64 overflow-auto">
-        {variantSources.map((v, i) => {
-          const p = v.proposed || {};
-          const diffs = FIELDS.filter(f => !jsonEq(get(canonical || {}, f.key), get(p, f.key))).slice(0, 3);
-          return (
-            <li
-              key={v.key}
-              className={classNames(
-                "px-3 py-2 text-sm cursor-pointer border-b hover:bg-gray-50",
-                i === activeVariantIdx && "bg-blue-50"
-              )}
-              onClick={() => setActiveVariantIdx(i)}
-            >
-              <div className="font-medium">{p.fullName || "(No name)"} · {p.role || ""}</div>
-              <div className="text-xs text-gray-600">
-                {v.submission?.submitterEmail || "unknown"} · {new Date(v.submission?.createdAt || v.submission?.submittedAt || Date.now()).toLocaleString()}
-              </div>
-              {diffs.length > 0 && (
-                <div className="mt-1 flex flex-wrap gap-1">
-                  {diffs.map(f => (
-                    <span key={f.key} className="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded">
-                      {f.label}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </li>
-          );
-        })}
-      </ul>
-      <div className="px-3 py-2 text-xs text-gray-500 border-t">
-        ↑/↓ to move, ⏎ to use variant
-      </div>
+      <div className="px-3 py-1.5 text-xs font-semibold tracking-wide text-gray-600 bg-gray-50">{title}</div>
+      {items.length === 0 ? (
+        <div className="px-3 py-2 text-sm text-gray-500">None</div>
+      ) : (
+        <ul className="divide-y">
+          {items.map((v, i) => {
+            const idx = offset + i; // global index for ReviewMergeModal to use applyVariant(idx)
+            const o = v.official || {};
+            const sel = idx === activeVariantIdx;
+            return (
+              <li key={idx}>
+                <button
+                  className={`w-full text-left px-3 py-2 ${sel ? "bg-emerald-50" : "hover:bg-gray-50"}`}
+                  onClick={() => setActiveVariantIdx(idx)}
+                  title={v.meta?.reason || ""}
+                >
+                  <div className="font-medium text-sm truncate">{o.fullName || v.label || "(unknown)"}</div>
+                  <div className="text-xs text-gray-600 truncate">
+                    {o.role || "—"} · {o.jurisdiction?.city ? `${o.jurisdiction.city}, ` : ""}{o.state || ""}
+                  </div>
+                  {v.meta?.reason && (
+                    <div className="text-[11px] text-gray-500 mt-0.5">{v.meta.reason}</div>
+                  )}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </div>
   );
-};
 
-export default VariantsList;
+  const likelyOffset = 0;
+  const possibleOffset = likely.length;
+  const hiddenOffset = likely.length + possible.length;
+
+  return (
+    <div className="space-y-3">
+      <Section title="Likely match" items={likely} offset={likelyOffset} />
+      <Section title="Possible matches" items={possible} offset={possibleOffset} />
+
+      <div className="flex items-center justify-between">
+        <div className="text-xs text-gray-500">Other locations (usually different person)</div>
+        <button className="text-xs underline" onClick={() => setShowHidden(!showHidden)}>
+          {showHidden ? "Hide" : "Show"} {hiddenGeo.length}
+        </button>
+      </div>
+      {showHidden && <Section title="Hidden – other cities/counties" items={hiddenGeo} offset={hiddenOffset} />}
+    </div>
+  );
+}
