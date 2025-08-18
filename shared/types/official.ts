@@ -2,6 +2,18 @@ export type PhoneLabel = "office" | "district" | "capitol" | "scheduler" | "pres
 
 export type JurisdictionLevels = "federal" | "state" | "county" | "municipal" | "regional" | "tribal";
 
+export type OfficeCategory =
+  | "mayor" | "city-council" | "county-commission" | "school-board" | "sheriff"
+  | "state-house" | "state-senate" | "governor" | "state-agency"
+  | "us-house" | "us-senate" | "federal-agency" | "tribal-council" | "chair";
+
+export interface Committee {
+  name: string;
+  chamber?: "house" | "senate" | "joint" | "city" | "county" | "school" | "other";
+  role?: string;   // Member/Chair/etc.
+  source?: string;
+}
+
 export interface Jurisdiction {
   city?: string;
   county?: string;
@@ -34,9 +46,9 @@ export interface Official {
   _id?: string;
   fullName: string;
   role: string;
-  email: string;
+  email?: string;
   state: string;
-  category: string;
+  category: OfficeCategory;
   level: JurisdictionLevels;
   issues?: string[]; // Issue _id refs
   partners: string[];
@@ -48,6 +60,8 @@ export interface Official {
   sourceAttributions?: SourceAttributionEntry[];
   jurisdiction?: Jurisdiction;
   phoneNumbers?: PhoneNumber[];
+  committees?: Committee[];
+  committeeTags?: string[];
   createdAt?: Date;
   updatedAt?: Date;
 }

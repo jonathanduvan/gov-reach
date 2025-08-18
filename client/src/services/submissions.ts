@@ -98,3 +98,18 @@ export async function fetchThreadEvents(groupKey: string, limit = 20) {
   if (!r.ok) throw new Error(await r.text());
   return r.json(); // { events: [...] }
 }
+
+export async function bulkResolveSubmissions(
+  ids: string[],
+  action: "approve" | "reject",
+  options?: { verify?: boolean; fieldOverrides?: Record<string, any>; closeThread?: boolean; resolution?: string }
+) {
+  const res = await fetch(`${API_BASE_URL}/api/officials/submissions/bulk-resolve`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ids, action, ...options }),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json() as Promise<{ results: Array<{ id: string; ok: boolean; error?: string; officialId?: string }> }>;
+}
