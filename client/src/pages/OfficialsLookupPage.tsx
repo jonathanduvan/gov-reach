@@ -1,69 +1,137 @@
 // src/pages/OfficialsLookupPage.tsx
-import React, { useMemo, useRef, useState, useEffect } from "react";
-import { searchOfficials } from "../services/officials";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { searchOfficials } from "../services/officials";
 import { useUser } from "../context/UserContext";
 import OfficialQuickViewModal from "../components/OfficialQuickViewModal";
 import FilterBar from "../components/FilterBar";
 import { reverseGeocode } from "../api";
-import { getPositionSmart, explainGeoError } from "../utils/geoClient";
+import { explainGeoError, getPositionSmart } from "../utils/geoClient";
 
-const ALL_LEVELS = ["municipal", "county", "regional", "state", "federal", "tribal"] as const;
+const ALL_LEVELS = [
+  "municipal",
+  "county",
+  "regional",
+  "state",
+  "federal",
+  "tribal",
+] as const;
 
 const US_STATE_ABBR: Record<string, string> = {
-  Alabama: "AL", Alaska: "AK", Arizona: "AZ", Arkansas: "AR", California: "CA", Colorado: "CO", Connecticut: "CT", Delaware: "DE",
-  "District of Columbia": "DC", Florida: "FL", Georgia: "GA", Hawaii: "HI", Idaho: "ID", Illinois: "IL", Indiana: "IN", Iowa: "IA",
-  Kansas: "KS", Kentucky: "KY", Louisiana: "LA", Maine: "ME", Maryland: "MD", Massachusetts: "MA", Michigan: "MI", Minnesota: "MN",
-  Mississippi: "MS", Missouri: "MO", Montana: "MT", Nebraska: "NE", Nevada: "NV", "New Hampshire": "NH", "New Jersey": "NJ",
-  "New Mexico": "NM", "New York": "NY", "North Carolina": "NC", "North Dakota": "ND", Ohio: "OH", Oklahoma: "OK", Oregon: "OR",
-  Pennsylvania: "PA", "Rhode Island": "RI", "South Carolina": "SC", "South Dakota": "SD", Tennessee: "TN", Texas: "TX", Utah: "UT",
-  Vermont: "VT", Virginia: "VA", Washington: "WA", "West Virginia": "WV", Wisconsin: "WI", Wyoming: "WY",
+  Alabama: "AL",
+  Alaska: "AK",
+  Arizona: "AZ",
+  Arkansas: "AR",
+  California: "CA",
+  Colorado: "CO",
+  Connecticut: "CT",
+  Delaware: "DE",
+  "District of Columbia": "DC",
+  Florida: "FL",
+  Georgia: "GA",
+  Hawaii: "HI",
+  Idaho: "ID",
+  Illinois: "IL",
+  Indiana: "IN",
+  Iowa: "IA",
+  Kansas: "KS",
+  Kentucky: "KY",
+  Louisiana: "LA",
+  Maine: "ME",
+  Maryland: "MD",
+  Massachusetts: "MA",
+  Michigan: "MI",
+  Minnesota: "MN",
+  Mississippi: "MS",
+  Missouri: "MO",
+  Montana: "MT",
+  Nebraska: "NE",
+  Nevada: "NV",
+  "New Hampshire": "NH",
+  "New Jersey": "NJ",
+  "New Mexico": "NM",
+  "New York": "NY",
+  "North Carolina": "NC",
+  "North Dakota": "ND",
+  Ohio: "OH",
+  Oklahoma: "OK",
+  Oregon: "OR",
+  Pennsylvania: "PA",
+  "Rhode Island": "RI",
+  "South Carolina": "SC",
+  "South Dakota": "SD",
+  Tennessee: "TN",
+  Texas: "TX",
+  Utah: "UT",
+  Vermont: "VT",
+  Virginia: "VA",
+  Washington: "WA",
+  "West Virginia": "WV",
+  Wisconsin: "WI",
+  Wyoming: "WY",
 };
 
-// normalize "ca" / "California" / "CALIFORNIA" -> "CA"
-function normalizeStateAbbr(input?: string): string | undefined {
-  if (!input) return undefined;
-  const s = input.trim();
-  if (!s) return undefined;
-  if (s.length === 2) return s.toUpperCase();
-  // try proper-case lookup
-  const proper = s
-    .toLowerCase()
-    .replace(/\b\w/g, (m) => m.toUpperCase()); // "california" -> "California"
-  return US_STATE_ABBR[proper] || undefined;
-}
-
 const PAGE_SIZE_OPTIONS = [10, 25, 50];
+
+type SearchOverrides = Partial<{
+  city: string;
+  state: string;
+  levels: string[];
+  q: string;
+  issue: string;
+}>;
+
+function normalizeStateAbbr(input?: string): string | undefined {
+  if (!input) {
+    return undefined;
+  }
+
+  const normalized = input.trim();
+
+  if (!normalized) {
+    return undefined;
+  }
+
+  if (normalized.length === 2) {
+    return normalized.toUpperCase();
+  }
+
+  const properCase = normalized
+    .toLowerCase()
+    .replace(/\b\w/g, (character) => character.toUpperCase());
+
+  return US_STATE_ABBR[properCase];
+}
 
 const OfficialsLookupPage: React.FC = () => {
   const nav = useNavigate();
   const { user } = useUser();
 
-  // filters
+  // Filters
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
   const [levels, setLevels] = useState<string[]>([...ALL_LEVELS]);
   const [q, setQ] = useState("");
   const [issue, setIssue] = useState("");
 
-  // results & UI
+  // Results and UI
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<any[]>([]);
   const [selectedIds, setSelectedIds] = useState<Record<string, boolean>>({});
 
-  // geolocation UI
+  // Geolocation UI
   const [locLabel, setLocLabel] = useState<string | null>(null);
 
-  // pagination
+  // Pagination
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<number>(25);
 
-  // quick view modal
+  // Quick-view modal
   const [viewOfficial, setViewOfficial] = useState<any | null>(null);
 
-  // request nonces (cancel stale responses)
+  // Request nonces prevent stale responses from updating state
   const geoNonce = useRef(0);
   const searchNonce = useRef(0);
 
@@ -72,30 +140,60 @@ const OfficialsLookupPage: React.FC = () => {
   const pageStart = (page - 1) * pageSize;
   const pageEnd = Math.min(total, pageStart + pageSize);
 
-  const pageRows = useMemo(() => results.slice(pageStart, pageEnd), [results, pageStart, pageEnd]);
-  const anySelected = useMemo(() => Object.values(selectedIds).some(Boolean), [selectedIds]);
+  const pageRows = useMemo(
+    () => results.slice(pageStart, pageEnd),
+    [results, pageStart, pageEnd]
+  );
 
-  function handleRowClick(e: React.MouseEvent, official: any) {
-    const target = e.target as HTMLElement;
-    if (target.closest("a,button,input,label")) return;
+  const anySelected = useMemo(
+    () => Object.values(selectedIds).some(Boolean),
+    [selectedIds]
+  );
+
+  const selectedCount = useMemo(
+    () => Object.values(selectedIds).filter(Boolean).length,
+    [selectedIds]
+  );
+
+  const allOnPageSelected =
+    pageRows.length > 0 &&
+    pageRows.every((official) => Boolean(selectedIds[official._id]));
+
+  const someOnPageSelected =
+    pageRows.some((official) => Boolean(selectedIds[official._id])) &&
+    !allOnPageSelected;
+
+  function handleRowClick(
+    event: React.MouseEvent,
+    official: any
+  ) {
+    const target = event.target as HTMLElement;
+
+    if (target.closest("a,button,input,label,select")) {
+      return;
+    }
+
     setViewOfficial(official);
   }
 
-  // ----- SEARCH -----
-  const runSearch = async (overrides?: Partial<{ city: string; state: string; levels: string[]; q: string; issue: string }>) => {
+  const runSearch = async (overrides?: SearchOverrides) => {
     setError(null);
     setLoading(true);
     setHasSearched(true);
 
     const nonce = ++searchNonce.current;
 
-    // normalize state before searching
     const stateInput = overrides?.state ?? state;
-    const abbr = normalizeStateAbbr(stateInput) ?? (stateInput?.length === 2 ? stateInput.toUpperCase() : undefined);
+
+    const stateAbbreviation =
+      normalizeStateAbbr(stateInput) ??
+      (stateInput?.length === 2
+        ? stateInput.toUpperCase()
+        : undefined);
 
     const filters = {
       city: (overrides?.city ?? city).trim() || undefined,
-      state: abbr,
+      state: stateAbbreviation,
       levels: overrides?.levels ?? levels,
       q: (overrides?.q ?? q).trim() || undefined,
       issue: (overrides?.issue ?? issue).trim() || undefined,
@@ -103,115 +201,166 @@ const OfficialsLookupPage: React.FC = () => {
     };
 
     try {
-      const { results } = await searchOfficials(filters);
-      if (searchNonce.current !== nonce) return;
-      setResults(results || []);
+      const response = await searchOfficials(filters);
+
+      if (searchNonce.current !== nonce) {
+        return;
+      }
+
+      setResults(response.results || []);
       setSelectedIds({});
       setPage(1);
-    } catch (e: any) {
-      if (searchNonce.current !== nonce) return;
-      console.error(e);
-      setError(e?.message || "Search failed");
+    } catch (searchError: any) {
+      if (searchNonce.current !== nonce) {
+        return;
+      }
+
+      console.error(searchError);
+      setError(searchError?.message || "Search failed");
     } finally {
-      if (searchNonce.current === nonce) setLoading(false);
+      if (searchNonce.current === nonce) {
+        setLoading(false);
+      }
     }
   };
 
-  // helper to run with fresh geo values immediately (no state race)
-  const runSearchWithOverrides = async (ovr: Partial<{ city: string; state: string }>) => {
-    await runSearch(ovr);
+  const runSearchWithOverrides = async (
+    overrides: Partial<{ city: string; state: string }>
+  ) => {
+    await runSearch(overrides);
   };
 
-  // ----- GEO LOCATION -----
   const useMyLocation = async (auto = false) => {
-    const myNonce = ++geoNonce.current;
+    const nonce = ++geoNonce.current;
+
     try {
       setLoading(true);
 
-      const pos = await getPositionSmart({
+      const position = await getPositionSmart({
         totalTimeoutMs: auto ? 6000 : 9000,
-        minAccuracyMeters: 100000, // be generous
+        minAccuracyMeters: 100000,
       });
 
-      if (geoNonce.current !== myNonce) return;
+      if (geoNonce.current !== nonce) {
+        return;
+      }
 
-      const { latitude, longitude } = pos.coords;
-      const geo = await reverseGeocode(latitude, longitude); // expects { city, stateAbbr, raw? }
+      const { latitude, longitude } = position.coords;
 
-      if (geoNonce.current !== myNonce) return;
+      const geo = await reverseGeocode(latitude, longitude);
+
+      if (geoNonce.current !== nonce) {
+        return;
+      }
 
       const foundCity = geo?.city || "";
-      const abbr = geo?.stateAbbr || "";
+      const stateAbbreviation = geo?.stateAbbr || "";
 
       setCity(foundCity);
-      setState(abbr);
-      setLocLabel([foundCity, abbr].filter(Boolean).join(", ") || null);
+      setState(stateAbbreviation);
+      setLocLabel(
+        [foundCity, stateAbbreviation].filter(Boolean).join(", ") || null
+      );
 
-      await runSearchWithOverrides({ city: foundCity, state: abbr });
-    } catch (err) {
-      if (!auto) alert(explainGeoError(err));
+      await runSearchWithOverrides({
+        city: foundCity,
+        state: stateAbbreviation,
+      });
+    } catch (locationError) {
+      if (!auto) {
+        alert(explainGeoError(locationError));
+      }
     } finally {
-      if (geoNonce.current === myNonce) setLoading(false);
+      if (geoNonce.current === nonce) {
+        setLoading(false);
+      }
     }
   };
 
-  // Only auto-run location if user has already granted permission
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+
+    const checkLocationPermission = async () => {
       try {
-        const p = await (navigator.permissions as any)?.query?.({ name: "geolocation" as PermissionName });
-        if (!cancelled && p?.state === "granted") {
-          useMyLocation(true);
+        const permission = await (
+          navigator.permissions as any
+        )?.query?.({
+          name: "geolocation" as PermissionName,
+        });
+
+        if (!cancelled && permission?.state === "granted") {
+          await useMyLocation(true);
         }
       } catch {
-        /* ignore */
+        // Ignore unsupported permission API errors.
       }
-    })();
+    };
+
+    void checkLocationPermission();
+
     return () => {
       cancelled = true;
     };
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Debounce text query
   useEffect(() => {
-    const t = setTimeout(() => {
-      if (q.trim().length >= 3) runSearch();
+    const timer = window.setTimeout(() => {
+      if (q.trim().length >= 3) {
+        void runSearch();
+      }
     }, 400);
-    return () => clearTimeout(t);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [q]);
 
-  // table UI bits
-  const allOnPageSelected = pageRows.length > 0 && pageRows.every((r) => !!selectedIds[r._id]);
-  const someOnPageSelected = pageRows.some((r) => !!selectedIds[r._id]) && !allOnPageSelected;
-
   const togglePick = (id: string) => {
-    setSelectedIds((prev) => ({ ...prev, [id]: !prev[id] }));
+    setSelectedIds((previous) => ({
+      ...previous,
+      [id]: !previous[id],
+    }));
   };
-  const togglePickAllOnPage = (on: boolean) => {
+
+  const togglePickAllOnPage = (selected: boolean) => {
     const patch: Record<string, boolean> = {};
-    pageRows.forEach((r) => {
-      patch[r._id] = on;
+
+    pageRows.forEach((official) => {
+      patch[official._id] = selected;
     });
-    setSelectedIds((prev) => ({ ...prev, ...patch }));
+
+    setSelectedIds((previous) => ({
+      ...previous,
+      ...patch,
+    }));
   };
 
   const startCampaign = () => {
-    const selected = results.filter((r) => selectedIds[r._id]);
-    if (!selected.length) return;
+    const selectedOfficials = results.filter(
+      (official) => selectedIds[official._id]
+    );
+
+    if (!selectedOfficials.length) {
+      return;
+    }
+
     nav("/partner/campaigns/new", {
       state: {
-        preselectedOfficials: selected.map((o) => o._id),
+        preselectedOfficials: selectedOfficials.map(
+          (official) => official._id
+        ),
         prefill: {
           title: `Contact officials in ${city || state}`,
-          description: `Draft outreach to ${selected.length} officials found via lookup.`,
-          officialsPreview: selected.map((o: any) => ({
-            id: o._id,
-            fullName: o.fullName,
-            role: o.role,
-            email: o.email,
+          description: `Draft outreach to ${selectedOfficials.length} officials found via lookup.`,
+          officialsPreview: selectedOfficials.map((official: any) => ({
+            id: official._id,
+            fullName: official.fullName,
+            role: official.role,
+            email: official.email,
           })),
         },
       },
@@ -219,78 +368,179 @@ const OfficialsLookupPage: React.FC = () => {
   };
 
   return (
-    <div className="max-w-6xl mx-auto p-6">
-      <h1 className="text-2xl font-bold mb-4">Find Public Officials</h1>
+    <main
+      className="
+        mx-auto max-w-6xl
+        px-4 py-6
+        text-[var(--text)]
+        transition-colors
+        sm:px-6
+      "
+    >
+      <h1 className="mb-4 text-2xl font-bold text-[var(--text)]">
+        Find Public Officials
+      </h1>
 
       <FilterBar
-        value={{ q, city, state, issue, levels }}
-        onChange={(next) => {
-          if (next.q !== undefined) setQ(next.q);
-          if (next.city !== undefined) setCity(next.city);
-          if (next.state !== undefined) setState(next.state);
-          if (next.issue !== undefined) setIssue(next.issue);
-          if (next.levels !== undefined) setLevels(next.levels);
+        value={{
+          q,
+          city,
+          state,
+          issue,
+          levels,
         }}
-        onSearch={() => runSearch()}
-        onUseLocation={() => useMyLocation(false)}
+        onChange={(next) => {
+          if (next.q !== undefined) {
+            setQ(next.q);
+          }
+
+          if (next.city !== undefined) {
+            setCity(next.city);
+          }
+
+          if (next.state !== undefined) {
+            setState(next.state);
+          }
+
+          if (next.issue !== undefined) {
+            setIssue(next.issue);
+          }
+
+          if (next.levels !== undefined) {
+            setLevels(next.levels);
+          }
+        }}
+        onSearch={() => {
+          void runSearch();
+        }}
+        onUseLocation={() => {
+          void useMyLocation(false);
+        }}
         allLevels={[...ALL_LEVELS]}
         loading={loading}
       />
 
       {error && (
-        <div className="mb-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded px-3 py-2">
+        <div
+          role="alert"
+          className="
+            mb-3 rounded
+            border border-red-200
+            bg-red-50
+            px-3 py-2
+            text-sm text-red-700
+            dark:border-red-900
+            dark:bg-red-950/40
+            dark:text-red-200
+          "
+        >
           {error}
         </div>
       )}
 
       {locLabel && (
-        <div className="text-xs text-gray-600 mb-3">
-          Auto-detected location: <span className="font-medium">{locLabel}</span>
+        <div className="mb-3 text-xs text-[var(--muted)]">
+          Auto-detected location:{" "}
+          <span className="font-medium text-[var(--text)]">
+            {locLabel}
+          </span>
         </div>
       )}
 
-      {/* Results header & pagination controls */}
       {results.length > 0 && (
-        <div className="mb-3 flex items-center justify-between text-sm text-gray-700">
+        <div
+          className="
+            mb-3 flex flex-col gap-3
+            text-sm text-[var(--muted)]
+            sm:flex-row sm:items-center sm:justify-between
+          "
+        >
           <div>
             Sorted by verified/confidence. Showing{" "}
-            <span className="font-medium">
+            <span className="font-medium text-[var(--text)]">
               {pageStart + 1}–{pageEnd}
             </span>{" "}
-            of <span className="font-medium">{total}</span>.
+            of{" "}
+            <span className="font-medium text-[var(--text)]">
+              {total}
+            </span>
+            .
           </div>
-          <div className="flex items-center gap-2">
+
+          <div className="flex flex-wrap items-center gap-2">
             <label className="flex items-center gap-2">
               <span>Rows per page</span>
+
               <select
-                className="border rounded px-2 py-1"
+                className="
+                  rounded border border-[var(--border)]
+                  bg-[var(--bg-surface)]
+                  px-2 py-1
+                  text-[var(--text)]
+                  focus:outline-none
+                  focus:ring-2
+                  focus:ring-brand-500/40
+                "
                 value={pageSize}
-                onChange={(e) => {
-                  setPageSize(Number(e.target.value));
+                onChange={(event) => {
+                  setPageSize(Number(event.target.value));
                   setPage(1);
                 }}
               >
-                {PAGE_SIZE_OPTIONS.map((n) => (
-                  <option key={n} value={n}>
-                    {n}
+                {PAGE_SIZE_OPTIONS.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
                   </option>
                 ))}
               </select>
             </label>
+
             <div className="flex items-center gap-1">
               <button
-                className="px-2 py-1 border rounded disabled:opacity-50"
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                type="button"
+                className="
+                  rounded border border-[var(--border)]
+                  bg-[var(--bg-surface)]
+                  px-2 py-1
+                  text-[var(--text)]
+                  transition-colors
+                  hover:bg-neutral-100
+                  disabled:cursor-not-allowed
+                  disabled:opacity-50
+                  dark:hover:bg-neutral-700
+                "
+                onClick={() =>
+                  setPage((currentPage) =>
+                    Math.max(1, currentPage - 1)
+                  )
+                }
                 disabled={page <= 1}
               >
                 Prev
               </button>
-              <span className="px-2">
+
+              <span className="px-2 text-[var(--text)]">
                 {page} / {totalPages}
               </span>
+
               <button
-                className="px-2 py-1 border rounded disabled:opacity-50"
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                type="button"
+                className="
+                  rounded border border-[var(--border)]
+                  bg-[var(--bg-surface)]
+                  px-2 py-1
+                  text-[var(--text)]
+                  transition-colors
+                  hover:bg-neutral-100
+                  disabled:cursor-not-allowed
+                  disabled:opacity-50
+                  dark:hover:bg-neutral-700
+                "
+                onClick={() =>
+                  setPage((currentPage) =>
+                    Math.min(totalPages, currentPage + 1)
+                  )
+                }
                 disabled={page >= totalPages}
               >
                 Next
@@ -300,108 +550,270 @@ const OfficialsLookupPage: React.FC = () => {
         </div>
       )}
 
-      {/* Table */}
-      <div className="border rounded overflow-x-auto bg-white">
+      <div
+        className="
+          overflow-x-auto rounded
+          border border-[var(--border)]
+          bg-[var(--bg-surface)]
+          shadow-sm
+          transition-colors
+        "
+      >
         <table className="min-w-full text-sm">
-          <thead className="bg-gray-50 sticky top-0 z-10">
+          <thead
+            className="
+              sticky top-0 z-10
+              bg-neutral-50
+              text-neutral-800
+              dark:bg-neutral-800
+              dark:text-neutral-100
+            "
+          >
             <tr>
-              <th className="px-3 py-2 border-b w-10">
+              <th
+                scope="col"
+                className="
+                  w-10 border-b border-[var(--border)]
+                  px-3 py-2
+                "
+              >
                 <input
                   type="checkbox"
                   checked={allOnPageSelected}
-                  ref={(el) => {
-                    if (el) el.indeterminate = someOnPageSelected;
+                  ref={(element) => {
+                    if (element) {
+                      element.indeterminate = someOnPageSelected;
+                    }
                   }}
-                  onChange={(e) => togglePickAllOnPage(e.target.checked)}
-                  aria-label="Select all on page"
+                  onChange={(event) =>
+                    togglePickAllOnPage(event.target.checked)
+                  }
+                  aria-label="Select all officials on this page"
+                  className="
+                    h-4 w-4 rounded
+                    border-[var(--border)]
+                    bg-[var(--bg-surface)]
+                    text-brand-600
+                    focus:ring-brand-500
+                  "
                 />
               </th>
-              <th className="text-left px-3 py-2 border-b">Official</th>
-              <th className="text-left px-3 py-2 border-b">Level</th>
-              <th className="text-left px-3 py-2 border-b">Location</th>
-              <th className="text-left px-3 py-2 border-b">Email</th>
-              <th className="text-left px-3 py-2 border-b">Phones</th>
+
+              <th
+                scope="col"
+                className="
+                  border-b border-[var(--border)]
+                  px-3 py-2 text-left
+                "
+              >
+                Official
+              </th>
+
+              <th
+                scope="col"
+                className="
+                  border-b border-[var(--border)]
+                  px-3 py-2 text-left
+                "
+              >
+                Level
+              </th>
+
+              <th
+                scope="col"
+                className="
+                  border-b border-[var(--border)]
+                  px-3 py-2 text-left
+                "
+              >
+                Location
+              </th>
+
+              <th
+                scope="col"
+                className="
+                  border-b border-[var(--border)]
+                  px-3 py-2 text-left
+                "
+              >
+                Email
+              </th>
+
+              <th
+                scope="col"
+                className="
+                  border-b border-[var(--border)]
+                  px-3 py-2 text-left
+                "
+              >
+                Phones
+              </th>
             </tr>
           </thead>
+
           <tbody>
             {pageRows.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-3 py-8 text-center text-gray-500">
+                <td
+                  colSpan={6}
+                  className="
+                    bg-[var(--bg-surface)]
+                    px-3 py-8
+                    text-center
+                    text-[var(--muted)]
+                  "
+                >
                   {loading
                     ? "Searching…"
                     : hasSearched
-                    ? "No results match these filters."
-                    : "No results yet. Try searching."}
+                      ? "No results match these filters."
+                      : "No results yet. Try searching."}
                 </td>
               </tr>
             ) : (
-              pageRows.map((o) => (
+              pageRows.map((official) => (
                 <tr
-                  key={o._id}
-                  className="odd:bg-white even:bg-gray-50 hover:bg-gray-100 cursor-pointer"
-                  onClick={(e) => handleRowClick(e, o)}
+                  key={official._id}
+                  className="
+                    cursor-pointer
+                    border-b border-[var(--border)]
+                    bg-[var(--bg-surface)]
+                    transition-colors
+                    last:border-b-0
+                    odd:bg-[var(--bg-surface)]
+                    even:bg-neutral-50
+                    hover:bg-neutral-100
+                    dark:even:bg-neutral-800/60
+                    dark:hover:bg-neutral-700/80
+                  "
+                  onClick={(event) =>
+                    handleRowClick(event, official)
+                  }
                 >
                   <td className="px-3 py-2 align-top">
                     <input
                       type="checkbox"
-                      checked={!!selectedIds[o._id]}
-                      onChange={() => togglePick(o._id)}
-                      aria-label={`Select ${o.fullName}`}
-                      onClick={(e) => e.stopPropagation()}
+                      checked={Boolean(selectedIds[official._id])}
+                      onChange={() => togglePick(official._id)}
+                      aria-label={`Select ${official.fullName}`}
+                      onClick={(event) => event.stopPropagation()}
+                      className="
+                        h-4 w-4 rounded
+                        border-[var(--border)]
+                        bg-[var(--bg-surface)]
+                        text-brand-600
+                        focus:ring-brand-500
+                      "
                     />
                   </td>
+
                   <td className="px-3 py-2 align-top">
-                    <div className="font-medium">{o.fullName}</div>
-                    <div className="text-xs text-gray-600">
-                      {o.role}
-                      {o.verified && (
-                        <span className="ml-2 text-[10px] bg-green-100 text-green-800 px-1.5 py-0.5 rounded align-middle">
+                    <div className="font-medium text-[var(--text)]">
+                      {official.fullName}
+                    </div>
+
+                    <div className="text-xs text-[var(--muted)]">
+                      {official.role}
+
+                      {official.verified && (
+                        <span
+                          className="
+                            ml-2 inline-flex items-center
+                            rounded px-1.5 py-0.5
+                            align-middle text-[10px]
+                            bg-green-100 text-green-800
+                            dark:bg-green-950/50
+                            dark:text-green-200
+                          "
+                        >
                           verified
                         </span>
                       )}
                     </div>
                   </td>
+
                   <td className="px-3 py-2 align-top">
-                    <div className="capitalize">{o.level}</div>
-                    {typeof o.confidenceScore === "number" && (
-                      <div className="text-[10px] text-gray-500">conf: {o.confidenceScore.toFixed(2)}</div>
+                    <div className="capitalize text-[var(--text)]">
+                      {official.level}
+                    </div>
+
+                    {typeof official.confidenceScore === "number" && (
+                      <div className="text-[10px] text-[var(--muted)]">
+                        conf: {official.confidenceScore.toFixed(2)}
+                      </div>
                     )}
                   </td>
+
                   <td className="px-3 py-2 align-top">
-                    <div className="text-sm">
-                      {o.jurisdiction?.city || "—"}, {o.state}
+                    <div className="text-sm text-[var(--text)]">
+                      {official.jurisdiction?.city || "—"},{" "}
+                      {official.state}
                     </div>
-                    <div className="text-[10px] text-gray-500">{o.category || ""}</div>
+
+                    <div className="text-[10px] text-[var(--muted)]">
+                      {official.category || ""}
+                    </div>
                   </td>
+
                   <td className="px-3 py-2 align-top">
-                    {o.email ? (
+                    {official.email ? (
                       <a
-                        className="underline text-blue-700 break-all"
-                        href={`mailto:${o.email}`}
-                        onClick={(e) => e.stopPropagation()}
+                        className="
+                          break-all underline
+                          text-blue-700
+                          hover:text-blue-800
+                          dark:text-blue-300
+                          dark:hover:text-blue-200
+                        "
+                        href={`mailto:${official.email}`}
+                        onClick={(event) => event.stopPropagation()}
                       >
-                        {o.email}
+                        {official.email}
                       </a>
                     ) : (
-                      <span className="text-gray-500">no email</span>
+                      <span className="text-[var(--muted)]">
+                        no email
+                      </span>
                     )}
                   </td>
+
                   <td className="px-3 py-2 align-top">
-                    {Array.isArray(o.phoneNumbers) && o.phoneNumbers.length > 0 ? (
+                    {Array.isArray(official.phoneNumbers) &&
+                    official.phoneNumbers.length > 0 ? (
                       <div className="flex flex-wrap gap-1">
-                        {o.phoneNumbers.slice(0, 3).map((p: any, idx: number) => (
-                          <span key={idx} className="inline-flex items-center text-xs bg-gray-100 px-2 py-0.5 rounded">
-                            {p.number}
-                            {p.label ? ` (${p.label})` : ""}
-                            {typeof p.priority === "number" ? ` · p${p.priority}` : ""}
+                        {official.phoneNumbers
+                          .slice(0, 3)
+                          .map((phone: any, index: number) => (
+                            <span
+                              key={`${official._id}-${phone.number}-${index}`}
+                              className="
+                                inline-flex items-center
+                                rounded px-2 py-0.5
+                                text-xs
+                                bg-neutral-100
+                                text-neutral-800
+                                dark:bg-neutral-700
+                                dark:text-neutral-100
+                              "
+                            >
+                              {phone.number}
+                              {phone.label
+                                ? ` (${phone.label})`
+                                : ""}
+                              {typeof phone.priority === "number"
+                                ? ` · p${phone.priority}`
+                                : ""}
+                            </span>
+                          ))}
+
+                        {official.phoneNumbers.length > 3 && (
+                          <span className="text-xs text-[var(--muted)]">
+                            +{official.phoneNumbers.length - 3} more
                           </span>
-                        ))}
-                        {o.phoneNumbers.length > 3 && (
-                          <span className="text-xs text-gray-500">+{o.phoneNumbers.length - 3} more</span>
                         )}
                       </div>
                     ) : (
-                      <span className="text-gray-500">—</span>
+                      <span className="text-[var(--muted)]">—</span>
                     )}
                   </td>
                 </tr>
@@ -411,16 +823,29 @@ const OfficialsLookupPage: React.FC = () => {
         </table>
       </div>
 
-      {/* Footer actions */}
       {results.length > 0 && (
-        <div className="mt-4 flex items-center justify-between">
-          <div className="text-sm text-gray-600">
-            {Object.values(selectedIds).filter(Boolean).length} selected
+        <div className="mt-4 flex items-center justify-between gap-3">
+          <div className="text-sm text-[var(--muted)]">
+            {selectedCount} selected
           </div>
+
           <button
+            type="button"
             disabled={!anySelected}
             onClick={startCampaign}
-            className={`px-4 py-2 rounded ${anySelected ? "bg-green-600 text-white" : "bg-gray-300 text-gray-600"}`}
+            className="
+              rounded px-4 py-2
+              text-sm font-medium
+              transition-colors
+              enabled:bg-green-600
+              enabled:text-white
+              enabled:hover:bg-green-700
+              disabled:cursor-not-allowed
+              disabled:bg-neutral-300
+              disabled:text-neutral-600
+              dark:disabled:bg-neutral-700
+              dark:disabled:text-neutral-400
+            "
           >
             Start a campaign with these
           </button>
@@ -428,13 +853,28 @@ const OfficialsLookupPage: React.FC = () => {
       )}
 
       {!user && (
-        <div className="mt-6 text-sm text-yellow-900 bg-yellow-100 border border-yellow-300 rounded p-3">
-          You can find officials without logging in. To create a campaign, please log in first.
+        <div
+          className="
+            mt-6 rounded border p-3 text-sm
+            border-amber-300
+            bg-amber-100
+            text-amber-900
+            dark:border-amber-800
+            dark:bg-amber-950/40
+            dark:text-amber-200
+          "
+        >
+          You can find officials without logging in. To create a
+          campaign, please log in first.
         </div>
       )}
 
-      <OfficialQuickViewModal open={!!viewOfficial} official={viewOfficial} onClose={() => setViewOfficial(null)} />
-    </div>
+      <OfficialQuickViewModal
+        open={Boolean(viewOfficial)}
+        official={viewOfficial}
+        onClose={() => setViewOfficial(null)}
+      />
+    </main>
   );
 };
 
